@@ -572,21 +572,19 @@ Tono: consultivo, directo, con datos concretos. Evita jerga técnica excesiva. E
 
 // ── INIT ─────────────────────────────────────────────────────
 async function init() {
-  try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/get-event?eventId=${EVENTO}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) {
-        eventConfig = data.event;
-      } else throw new Error('not found');
-    } else throw new Error('fetch failed');
-  } catch (_) {
-    // Use demo config
+  // Try to load config from URL param ?c= (base64 encoded public config)
+  const cParam = params.get('c');
+  if (cParam) {
+    try {
+      const decoded = JSON.parse(decodeURIComponent(escape(atob(cParam))));
+      eventConfig = { ...DEMO_CONFIG, ...decoded };
+    } catch(_) {
+      eventConfig = DEMO_CONFIG;
+    }
+  } else {
     eventConfig = DEMO_CONFIG;
   }
 
-  // Patch: fetch full config (with prompt) will happen server-side in generate-report
-  // For survey page we only need the public fields
   document.getElementById('eventBadge').textContent = eventConfig.eventName || 'AI Survey';
   document.getElementById('heroDesc').textContent =
     eventConfig.heroDesc || 'Responde este cuestionario y recibe en tu correo un reporte personalizado con tu score de madurez y las iniciativas más relevantes para tu industria.';

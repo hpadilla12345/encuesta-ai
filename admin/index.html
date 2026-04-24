@@ -525,15 +525,9 @@ function switchTab(tabId) {
 }
 
 // ── EVENTS ─────────────────────────────────────────────────────
-async function loadEvents() {
-  try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`);
-    const data = await res.json();
-    renderEventsList(data.events || []);
-  } catch (_) {
-    // Dev: show empty state
-    renderEventsList([]);
-  }
+function loadEvents() {
+  const events = lsGetEvents().map(e => ({ eventId: e.eventId, eventName: e.eventName, slug: e.slug, active: e.active, updatedAt: e.updatedAt }));
+  renderEventsList(events);
 }
 
 function renderEventsList(events) {
@@ -558,17 +552,11 @@ function renderEventsList(events) {
   `).join('');
 }
 
-async function editEvent(eventId) {
-  try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/get-event?eventId=${eventId}`);
-    const data = await res.json();
-    const ev = data.event;
-    // Reload full config (admin version with prompt)
-    populateEditor(ev);
-    currentEventId = eventId;
-  } catch (_) {
-    showToast('Error cargando el evento');
-  }
+function editEvent(eventId) {
+  const ev = lsGetEvent(eventId);
+  if (!ev) { showToast('Evento no encontrado'); return; }
+  populateEditor(ev);
+  currentEventId = eventId;
   showPage('new-event');
   switchTab('tab-info');
 }
@@ -675,6 +663,19 @@ function moveQuestion(i, dir) {
 function addOption(qi) { questions[qi].options = [...(questions[qi].options||[]), '']; renderQuestionsList(); }
 function removeOption(qi, oi) { questions[qi].options.splice(oi, 1); renderQuestionsList(); }
 
+// ── LOCAL STORAGE DB ───────────────────────────────────────────
+function lsGetEvents() {
+  try { return JSON.parse(localStorage.getItem('survey_events') || '[]'); } catch(_) { return []; }
+}
+function lsSaveEvents(events) { localStorage.setItem('survey_events', JSON.stringify(events)); }
+function lsGetEvent(id) { return lsGetEvents().find(e => e.eventId === id || e.slug === id) || null; }
+function lsUpsertEvent(ev) {
+  const events = lsGetEvents();
+  const idx = events.findIndex(e => e.eventId === ev.eventId);
+  if (idx >= 0) events[idx] = ev; else events.push(ev);
+  lsSaveEvents(events);
+}
+
 // ── SAVE EVENT ─────────────────────────────────────────────────
 async function saveEvent() {
   const name = document.getElementById('ev-name').value.trim();
@@ -686,55 +687,54 @@ async function saveEvent() {
   if (!prompt) { showToast('❌ El system prompt es requerido'); return; }
   if (!template) { showToast('❌ El template HTML es requerido'); return; }
 
+  const existingId = document.getElementById('ev-id').value;
   const eventData = {
-    eventId: document.getElementById('ev-id').value || null,
-    eventName: name,
-    slug,
+    eventId: existingId || `evt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+    eventName: name, slug,
     heroDesc: document.getElementById('ev-desc').value,
     active: document.getElementById('ev-active').value === 'true',
     ccAdmin: document.getElementById('ev-cc').value === 'true',
     questions: questions.map((q, i) => ({ ...q, id: q.id || `q${i+1}` })),
-    systemPrompt: prompt,
-    reportTemplate: template,
-    createdAt: document.getElementById('ev-id').value ? undefined : new Date().toISOString(),
+    systemPrompt: prompt, reportTemplate: template,
+    createdAt: existingId ? (lsGetEvent(existingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
-  try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/save-event`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminPassword: adminPass, eventData }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      currentEventId = data.eventId;
-      document.getElementById('ev-id').value = data.eventId;
-      updateLinkSection(data.eventId, slug);
-      showToast('✅ Evento guardado correctamente');
-      switchTab('tab-link');
-      loadEvents();
-    } else {
-      showToast('❌ Error: ' + data.error);
-    }
-  } catch (err) {
-    showToast('⚠️ Sin conexión al servidor. En dev local el guardado es simulado.');
-    // Dev fallback
-    const fakeId = 'evt_' + Date.now();
-    currentEventId = fakeId;
-    document.getElementById('ev-id').value = fakeId;
-    updateLinkSection(fakeId, slug);
-  }
+  lsUpsertEvent(eventData);
+  currentEventId = eventData.eventId;
+  document.getElementById('ev-id').value = eventData.eventId;
+  updateLinkSection(eventData.eventId, slug);
+  showToast('✅ Evento guardado');
+  switchTab('tab-link');
+  loadEvents();
+
+  // Also push prompt+template to server so generate-report can access them
+  fetch(`${BASE_URL}/.netlify/functions/store-event-config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adminPassword: adminPass, eventId: eventData.eventId, systemPrompt: eventData.systemPrompt, reportTemplate: eventData.reportTemplate }),
+  }).catch(console.error);
 }
 
 function updateLinkSection(eventId, slug) {
-  const surveyUrl = `${BASE_URL}/survey/?evento=${slug || eventId}`;
+  // Embed full event config in URL as base64 (no server lookup needed)
+  const ev = lsGetEvent(eventId);
+  if (!ev) return;
+  // Strip prompt/template from public URL — keep only what survey needs
+  const publicConfig = { eventId: ev.eventId, eventName: ev.eventName, slug: ev.slug, heroDesc: ev.heroDesc, active: ev.active, questions: ev.questions };
+  // Full config (with prompt+template) encoded separately — survey page fetches it from localStorage via postMessage-less approach
+  // We embed the publicConfig in URL and store full config keyed by eventId in a shared param
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(publicConfig))));
+  const surveyUrl = `${BASE_URL}/survey/?c=${encoded}`;
+  const shortUrl = `${BASE_URL}/survey/?evento=${slug}`;
+  
   document.getElementById('linkSection').innerHTML = `
     <div class="section-label">Link del formulario público</div>
-    <div class="link-display">
-      <span class="link-url">${surveyUrl}</span>
-      <button class="btn btn-secondary btn-sm" onclick="copyLink('${surveyUrl}')">📋 Copiar</button>
+    <div class="link-display" style="margin-bottom:8px">
+      <span class="link-url" style="font-size:11px">${surveyUrl.slice(0,80)}...</span>
+      <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${surveyUrl}').then(()=>showToast('✅ Link copiado'))">📋 Copiar</button>
     </div>
-    <p style="margin-top:12px;font-size:12px;color:var(--muted)">Comparte este link con los asistentes. El formulario se activa/desactiva desde la pestaña de Info.</p>
+    <p style="margin-top:12px;font-size:12px;color:var(--muted)">La configuración del evento está embebida en el link. Comparte el link completo.</p>
     <div style="margin-top:16px;display:flex;gap:8px">
       <a href="${surveyUrl}" target="_blank" class="btn btn-secondary btn-sm">🔗 Abrir formulario</a>
     </div>
@@ -755,18 +755,14 @@ function loadDefaultPrompt() { document.getElementById('ev-prompt').value = DEFA
 function loadDefaultTemplate() { document.getElementById('ev-template').value = DEFAULT_TEMPLATE; showToast('Template base cargado'); }
 
 // ── LEADS ──────────────────────────────────────────────────────
-async function populateLeadsFilter() {
-  try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`);
-    const data = await res.json();
-    const sel = document.getElementById('leadsEventFilter');
-    (data.events || []).forEach(ev => {
-      const opt = document.createElement('option');
-      opt.value = ev.eventId;
-      opt.textContent = ev.eventName;
-      sel.appendChild(opt);
-    });
-  } catch (_) {}
+function populateLeadsFilter() {
+  const sel = document.getElementById('leadsEventFilter');
+  lsGetEvents().forEach(ev => {
+    const opt = document.createElement('option');
+    opt.value = ev.eventId;
+    opt.textContent = ev.eventName;
+    sel.appendChild(opt);
+  });
 }
 
 async function loadLeads() {

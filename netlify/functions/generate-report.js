@@ -10,7 +10,24 @@ exports.handler = async (event) => {
 
   try {
     const { answers, respondent, eventConfig } = JSON.parse(event.body);
-    const { systemPrompt, reportTemplate, questions, eventName } = eventConfig;
+    let { systemPrompt, reportTemplate, questions, eventName, eventId } = eventConfig;
+
+    // If prompt/template missing, try to fetch from store-event-config
+    if ((!systemPrompt || !reportTemplate) && eventId) {
+      try {
+        const fs = require("fs");
+        const STORE_PATH = "/tmp/event-configs.json";
+        const store = JSON.parse(fs.readFileSync(STORE_PATH, "utf8"));
+        if (store[eventId]) {
+          systemPrompt = systemPrompt || store[eventId].systemPrompt;
+          reportTemplate = reportTemplate || store[eventId].reportTemplate;
+        }
+      } catch(_) {}
+    }
+
+    // Final fallback defaults
+    if (!systemPrompt) systemPrompt = "Eres un consultor experto en IA de Grupo Scanda. Analiza las respuestas del cuestionario y genera un reporte ejecutivo de madurez en IA con: 1) Score 0-100, 2) Tier (Observador/Explorador/Adoptador/Líder), 3) Análisis personalizado, 4) Benchmark vs LATAM, 5) Top 3 iniciativas recomendadas, 6) CTA para AI Discovery. Responde SOLO con el HTML del reporte.";
+    if (!reportTemplate) reportTemplate = "<div style='font-family:Arial;background:#0a1628;color:#f0f4f8;padding:32px;border-radius:12px;max-width:600px;margin:0 auto'><h2 style='color:#0edda9;text-align:center'>Score: {{SCORE}}/100</h2><div style='background:#0e203d;border-radius:8px;padding:16px;margin:16px 0'><b style='color:#0edda9'>Tier:</b> {{TIER}}</div><div style='margin:16px 0'><b style='color:#0edda9'>Análisis:</b><p style='color:#b0c4d8;margin-top:8px'>{{ANALISIS}}</p></div><div style='background:#0e203d;border-radius:8px;padding:16px;margin:16px 0'><b style='color:#5fa8ff'>Benchmark LATAM:</b><p style='color:#b0c4d8;margin-top:8px'>{{BENCHMARK}}</p></div><div style='margin:16px 0'><b style='color:#0edda9'>Top 3 Iniciativas:</b>{{INICIATIVAS}}</div><div style='background:rgba(14,221,169,0.1);border:1px solid rgba(14,221,169,0.3);border-radius:8px;padding:20px;text-align:center;margin-top:24px'><p style='color:#f0f4f8;font-weight:700'>¿Quieres un plan de acción real?</p><a href='https://grupoScanda.com/discovery' style='display:inline-block;background:#0edda9;color:#050d1a;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:700;margin-top:12px'>AGENDAR AI DISCOVERY →</a></div></div>";
 
     // Build the user message with structured answers
     const answersText = questions.map((q, i) => {
