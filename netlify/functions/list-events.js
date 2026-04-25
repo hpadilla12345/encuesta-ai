@@ -1,35 +1,16 @@
-exports.handler = async (event) => {
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: corsHeaders(), body: "" };
-  }
+const gh = require('./gh-storage');
 
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors(), body: '' };
   const adminPassword = event.queryStringParameters?.adminPassword;
-  if (adminPassword !== process.env.ADMIN_PASSWORD) {
-    return { statusCode: 401, headers: corsHeaders(), body: JSON.stringify({ error: "Unauthorized" }) };
-  }
+  if (adminPassword !== process.env.ADMIN_PASSWORD)
+    return { statusCode: 401, headers: cors(), body: JSON.stringify({ error: 'Unauthorized' }) };
 
   try {
-    const { getStore } = require("@netlify/blobs");
-    const store = getStore({ name: "survey-events", consistency: "strong" });
-    const index = await store.get("__index__", { type: "json" }) || [];
-    return {
-      statusCode: 200,
-      headers: { ...corsHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ success: true, events: index }),
-    };
+    const events = await gh.getEvents();
+    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' }, body: JSON.stringify({ success: true, events, storage: 'github' }) };
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' }, body: JSON.stringify({ success: true, events: [], storage: 'github', note: err.message }) };
   }
 };
-
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-  };
-}
+function cors() { return { 'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'GET,OPTIONS' }; }
