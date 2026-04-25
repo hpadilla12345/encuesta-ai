@@ -8,12 +8,17 @@ exports.handler = async (event) => {
     const { adminPassword, eventData } = JSON.parse(event.body);
     if (adminPassword !== process.env.ADMIN_PASSWORD)
       return { statusCode: 401, headers: cors(), body: JSON.stringify({ error: 'Unauthorized' }) };
-    if (!eventData.eventId) eventData.eventId = `evt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+
+    if (!eventData.eventId)
+      eventData.eventId = `evt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
     eventData.updatedAt = new Date().toISOString();
     if (!eventData.createdAt) eventData.createdAt = eventData.updatedAt;
+
     await gh.saveEvent(eventData);
-    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' }, body: JSON.stringify({ success: true, eventId: eventData.eventId, storage: 'github' }) };
+    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ success: true, eventId: eventData.eventId, storage: 'github' }) };
   } catch (err) {
+    console.error('save-event error:', err);
     return { statusCode: 500, headers: cors(), body: JSON.stringify({ error: err.message }) };
   }
 };
