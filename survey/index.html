@@ -621,24 +621,19 @@ Tono: consultivo, directo, con datos concretos. Evita jerga técnica excesiva. E
 
 // ── INIT ─────────────────────────────────────────────────────
 async function init() {
-  // Priority 1: ?c= param (base64 full config embedded in URL from admin)
+  // Siempre carga config completa desde el servidor (incluye logo, prompt, template)
+  // El ?c= solo se usa para extraer el slug/eventId, nunca como config final
   const cParam = params.get('c');
+  let slugOrId = EVENTO;
+
   if (cParam) {
     try {
       const decoded = JSON.parse(decodeURIComponent(escape(atob(cParam))));
-      // Merge with DEMO_CONFIG to get prompt+template from server if not in URL
-      eventConfig = { ...DEMO_CONFIG, ...decoded };
-      // If no prompt/template in URL config, fetch from server
-      if (!eventConfig.systemPrompt || !eventConfig.reportTemplate) {
-        await fetchFullConfigFromServer(eventConfig.eventId || eventConfig.slug || EVENTO);
-      }
-    } catch(_) {
-      eventConfig = DEMO_CONFIG;
-    }
-  } else {
-    // Priority 2: ?evento=slug → fetch full config from server (get-event function)
-    await fetchFullConfigFromServer(EVENTO);
+      slugOrId = decoded.slug || decoded.eventId || EVENTO;
+    } catch(_) {}
   }
+
+  await fetchFullConfigFromServer(slugOrId);
 
   document.getElementById('eventBadge').textContent = eventConfig.eventName || 'AI Survey';
   document.getElementById('heroDesc').textContent =
