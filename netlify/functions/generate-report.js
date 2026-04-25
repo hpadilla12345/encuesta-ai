@@ -12,6 +12,19 @@ exports.handler = async (event) => {
     if (!systemPrompt) systemPrompt = "Eres un consultor experto en IA de Grupo Scanda. Genera un reporte ejecutivo de madurez en IA con Score 0-100, Tier, análisis, benchmark LATAM, Top 3 iniciativas y CTA para AI Discovery. Llena TODAS las variables {{...}} del template. Responde SOLO con el HTML puro.";
     if (!reportTemplate) reportTemplate = "<div style='font-family:Arial;background:#0a1628;color:#f0f4f8;padding:32px;border-radius:12px;max-width:600px;margin:0 auto'><h2 style='color:#0edda9;text-align:center'>Score: {{SCORE}}/100</h2><p>{{POSICION_GARTNER}}</p></div>";
 
+    // Reemplazar CTA con valores del evento si existen
+    const { ctaText, ctaUrl } = eventConfig;
+    if (ctaText) {
+      reportTemplate = reportTemplate.replace(/AGENDAR MI SESIÓN →/g, ctaText)
+        .replace(/AGENDA TU AI DISCOVERY →/g, ctaText)
+        .replace(/AGENDAR AI DISCOVERY →/g, ctaText);
+    }
+    if (ctaUrl) {
+      reportTemplate = reportTemplate.replace(/https:\/\/calendly\.com\/[^\s"']*/g, ctaUrl)
+        .replace(/https:\/\/grupoScanda\.com\/discovery/g, ctaUrl)
+        .replace(/https:\/\/gruposcanda\.com\/discovery/g, ctaUrl);
+    }
+
     const answersText = (questions || []).map(q => {
       const ans = answers[q.id];
       return `**${q.label}**\nRespuesta: ${Array.isArray(ans) ? ans.join(', ') : (ans || 'No respondida')}`;
@@ -30,11 +43,27 @@ exports.handler = async (event) => {
     let reportHtml = message.content[0].text;
     reportHtml = reportHtml.replace(/^```html?\s*/i, '').replace(/```\s*$/i, '').trim();
 
-    const responseData = { respondent, answers, eventId, eventName, reportHtml, timestamp: new Date().toISOString() };
-    try { await gh.saveResponse(eventId, responseData); } catch (gh) { console.log('gh save failed:', gh.message); }
+    // Guardar respuesta en GitHub
+    const responseData = {
+      respondent,
+      answers,
+      eventId,
+      eventName,
+      reportHtml,
+      timestamp: new Date().toISOString(),
+    };
 
-    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true, reportHtml }) };
+    try {
+      await gh.saveResponse(eventId, responseData);
+    } catch (ghErr) {
+      console.log('GitHub save failed (non-fatal):', ghErr.message);
+    }
+
+    return {
+      statusCode: 200,
+      headers: { ...cors(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ success: true, reportHtml }),
+    };
   } catch (err) {
     console.error('generate-report error:', err);
     return { statusCode: 500, headers: { ...cors(), 'Content-Type': 'application/json' },
