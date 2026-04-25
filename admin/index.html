@@ -267,6 +267,26 @@
             <label>Descripción para el hero del formulario</label>
             <textarea id="ev-desc" rows="3" placeholder="Responde este cuestionario y recibe en tu correo un reporte personalizado..."></textarea>
           </div>
+
+          <!-- Logo del cliente -->
+          <div class="field">
+            <label>Logo del cliente (aparece en el survey y en el reporte)</label>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:4px">
+              <div id="logoPreview" style="width:120px;height:48px;background:var(--surface2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);overflow:hidden">
+                Sin logo
+              </div>
+              <div style="flex:1">
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer;display:inline-flex">
+                  📁 Subir logo
+                  <input type="file" id="ev-logo-file" accept="image/*" onchange="handleLogoUpload(event)" style="display:none">
+                </label>
+                <button class="btn btn-secondary btn-sm" onclick="clearLogo()" style="margin-left:8px">✕ Quitar</button>
+                <div style="font-size:11px;color:var(--muted);margin-top:6px">PNG, JPG o SVG · Recomendado: fondo transparente · Max 200KB</div>
+              </div>
+            </div>
+            <input type="hidden" id="ev-logo">
+          </div>
+
           <div class="field-row">
             <div class="field">
               <label>Estado</label>
@@ -560,7 +580,20 @@ function seedAmchamIfNeeded() {
   }
 }
 
-function loadEvents() {
+async function loadEvents() {
+  const grid = document.getElementById('eventsGrid');
+  grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px">Cargando eventos...</div>';
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`);
+    const data = await res.json();
+    if (data.success) {
+      // Sync GitHub events into localStorage
+      (data.events || []).forEach(ev => lsUpsertEvent(ev));
+      renderEventsList(data.events || []);
+      return;
+    }
+  } catch (_) {}
+  // Fallback: localStorage (incluye AmCham seed)
   seedAmchamIfNeeded();
   const events = lsGetEvents().map(e => ({ eventId: e.eventId, eventName: e.eventName, slug: e.slug, active: e.active, updatedAt: e.updatedAt }));
   renderEventsList(events);
@@ -663,6 +696,8 @@ function populateEditor(ev) {
   document.getElementById('ev-cc').value = ev.ccAdmin !== false ? 'true' : 'false';
   document.getElementById('ev-prompt').value = ev.systemPrompt || DEFAULT_PROMPT;
   document.getElementById('ev-template').value = ev.reportTemplate || DEFAULT_TEMPLATE;
+  document.getElementById('ev-logo').value = ev.clientLogo || '';
+  setLogoPreview(ev.clientLogo || '');
   questions = ev.questions || [];
   renderQuestionsList();
   if (ev.eventId) updateLinkSection(ev.eventId, ev.slug);
@@ -676,6 +711,8 @@ function clearEditor() {
   document.getElementById('ev-active').value = 'true';
   document.getElementById('ev-prompt').value = DEFAULT_PROMPT;
   document.getElementById('ev-template').value = DEFAULT_TEMPLATE;
+  document.getElementById('ev-logo').value = '';
+  setLogoPreview('');
   questions = [];
   renderQuestionsList();
   document.getElementById('linkSection').innerHTML = '<p style="color:var(--muted);font-size:13px">Guarda el evento primero para generar el link.</p>';
@@ -785,6 +822,7 @@ async function saveEvent() {
     eventId: existingId || `evt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
     eventName: name, slug,
     heroDesc: document.getElementById('ev-desc').value,
+    clientLogo: document.getElementById('ev-logo').value || '',
     active: document.getElementById('ev-active').value === 'true',
     ccAdmin: document.getElementById('ev-cc').value === 'true',
     questions: questions.map((q, i) => ({ ...q, id: q.id || `q${i+1}` })),
@@ -793,20 +831,31 @@ async function saveEvent() {
     updatedAt: new Date().toISOString(),
   };
 
+  // Guardar en localStorage primero (inmediato)
   lsUpsertEvent(eventData);
   currentEventId = eventData.eventId;
   document.getElementById('ev-id').value = eventData.eventId;
   updateLinkSection(eventData.eventId, slug);
-  showToast('✅ Evento guardado');
+  showToast('💾 Guardando en GitHub...');
   switchTab('tab-link');
-  loadEvents();
 
-  // Also push prompt+template to server so generate-report can access them
-  fetch(`${BASE_URL}/.netlify/functions/store-event-config`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adminPassword: adminPass, eventId: eventData.eventId, systemPrompt: eventData.systemPrompt, reportTemplate: eventData.reportTemplate }),
-  }).catch(console.error);
+  // Guardar en GitHub (fuente de verdad)
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/save-event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminPassword: adminPass, eventData }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Evento guardado en GitHub');
+    } else {
+      showToast('⚠️ Guardado local OK — GitHub falló: ' + (data.error || ''));
+    }
+  } catch (err) {
+    showToast('⚠️ Guardado local OK — sin conexión a GitHub');
+  }
+  loadEvents();
 }
 
 function updateLinkSection(eventId, slug) {
@@ -872,7 +921,6 @@ function lsResetResponses(eventId) {
 // ── LEADS ──────────────────────────────────────────────────────
 function populateLeadsFilter() {
   const sel = document.getElementById('leadsEventFilter');
-  // Clear existing options except first
   while (sel.options.length > 1) sel.remove(1);
   lsGetEvents().forEach(ev => {
     const opt = document.createElement('option');
@@ -885,6 +933,25 @@ function populateLeadsFilter() {
 async function loadLeads() {
   const eventId = document.getElementById('leadsEventFilter').value;
   if (!eventId) return;
+
+  document.getElementById('leadsTableBody').innerHTML =
+    '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:32px">Cargando desde GitHub...</td></tr>';
+
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/list-responses?adminPassword=${encodeURIComponent(adminPass)}&eventId=${encodeURIComponent(eventId)}`);
+    const data = await res.json();
+    if (data.success && data.responses?.length) {
+      allLeads = data.responses;
+      // Sync to localStorage
+      const all = lsGetAllResponses();
+      all[eventId] = data.responses;
+      lsSaveAllResponses(all);
+      renderLeadsTable(allLeads, eventId);
+      return;
+    }
+  } catch (_) {}
+
+  // Fallback: localStorage
   allLeads = lsGetResponses(eventId);
   renderLeadsTable(allLeads, eventId);
 }
@@ -902,24 +969,206 @@ function renderLeadsTable(leads, eventId) {
   `;
   const tbody = document.getElementById('leadsTableBody');
   if (!leads.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:32px">Sin respuestas aún</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:32px">Sin respuestas aún — los leads aparecerán aquí cuando alguien llene el formulario.</td></tr>';
     return;
   }
-  tbody.innerHTML = leads.map((l, idx) => `<tr>
-    <td>${l.respondent?.name || '—'}</td>
-    <td>${l.respondent?.company || '—'}</td>
-    <td>${l.respondent?.role || '—'}</td>
-    <td>${l.respondent?.industry || '—'}</td>
-    <td style="color:var(--accent2)">${l.respondent?.email || '—'}</td>
-    <td style="color:var(--muted);font-size:12px">${l.timestamp ? new Date(l.timestamp).toLocaleDateString('es-MX') : '—'}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="deleteResponse('${eventId}',${idx})" title="Eliminar esta respuesta">🗑</button></td>
-  </tr>`).join('');
+
+  tbody.innerHTML = '';
+  leads.forEach((l, idx) => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.title = 'Clic para ver detalle';
+    tr.onclick = () => openLeadDetail(l, idx, eventId);
+
+    const cells = [
+      l.respondent?.name || '—',
+      l.respondent?.company || '—',
+      l.respondent?.role || '—',
+      l.respondent?.industry || '—',
+      l.respondent?.email || '—',
+      l.timestamp ? new Date(l.timestamp).toLocaleDateString('es-MX') : '—',
+    ];
+    cells.forEach((val, i) => {
+      const td = document.createElement('td');
+      td.textContent = val;
+      if (i === 4) td.style.color = 'var(--accent2)';
+      if (i === 5) { td.style.color = 'var(--muted)'; td.style.fontSize = '12px'; }
+      tr.appendChild(td);
+    });
+
+    const tdBtn = document.createElement('td');
+    tdBtn.onclick = e => e.stopPropagation();
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-danger btn-sm';
+    delBtn.textContent = '🗑';
+    delBtn.title = 'Eliminar respuesta';
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteResponse(eventId, idx); };
+    tdBtn.appendChild(delBtn);
+    tr.appendChild(tdBtn);
+    tbody.appendChild(tr);
+  });
 }
 
-function deleteResponse(eventId, idx) {
+// ── LEAD DETAIL MODAL ─────────────────────────────────────────
+function openLeadDetail(lead, idx, eventId) {
+  const r = lead.respondent || {};
+  const ev = lsGetEvent(eventId) || {};
+
+  let answersHtml = '';
+  if (lead.answers && ev.questions) {
+    answersHtml = ev.questions.map(q => {
+      const ans = lead.answers[q.id];
+      const val = Array.isArray(ans) ? ans.join(', ') : (ans || '—');
+      return `<div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">${q.label}</div>
+        <div style="font-size:13px;color:var(--text)">${val}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'leadModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;padding:28px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">${r.name || '—'}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:2px">${r.role || ''} · ${r.company || ''}</div>
+          <div style="font-size:12px;color:var(--accent2);margin-top:2px">${r.email || ''}</div>
+        </div>
+        <button onclick="document.getElementById('leadModal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px">Respuestas del cuestionario</div>
+        ${answersHtml || '<p style="color:var(--muted);font-size:13px">Sin detalle de respuestas disponible.</p>'}
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:16px">
+        <button class="btn btn-primary btn-sm" onclick="resendReport(${idx},'${eventId}',this)">
+          📧 Reenviar reporte por email
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="regenerateAndSend(${idx},'${eventId}',this)">
+          🔄 Regenerar y enviar reporte
+        </button>
+        ${lead.reportHtml ? `<button class="btn btn-secondary btn-sm" onclick="previewReport(${idx})">👁 Ver reporte</button>` : ''}
+      </div>
+      <div id="leadModalStatus" style="margin-top:12px;font-size:13px;color:var(--accent)"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+async function resendReport(idx, eventId, btn) {
+  const lead = allLeads[idx];
+  if (!lead?.respondent?.email) { showToast('❌ Sin email para este lead'); return; }
+  if (!lead.reportHtml) { showToast('⚠️ No hay reporte guardado — usa Regenerar'); return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Enviando...';
+  const status = document.getElementById('leadModalStatus');
+  const ev = lsGetEvent(eventId) || {};
+
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: lead.respondent.email,
+        name: lead.respondent.name,
+        company: lead.respondent.company,
+        eventName: ev.eventName || lead.eventName,
+        reportHtml: lead.reportHtml,
+        ccAdmin: true,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      status.textContent = `✅ Email reenviado a ${lead.respondent.email}`;
+      btn.textContent = '✅ Enviado';
+    } else {
+      status.textContent = '❌ Error: ' + (data.error || 'desconocido');
+      btn.disabled = false; btn.textContent = '📧 Reenviar reporte por email';
+    }
+  } catch (err) {
+    status.textContent = '❌ ' + err.message;
+    btn.disabled = false; btn.textContent = '📧 Reenviar reporte por email';
+  }
+}
+
+async function regenerateAndSend(idx, eventId, btn) {
+  const lead = allLeads[idx];
+  const ev = lsGetEvent(eventId);
+  if (!lead?.respondent?.email) { showToast('❌ Sin email'); return; }
+  if (!ev) { showToast('❌ Evento no encontrado'); return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Generando con IA...';
+  const status = document.getElementById('leadModalStatus');
+
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: lead.answers || {}, respondent: lead.respondent, eventConfig: ev }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    status.textContent = '✅ Reporte regenerado — enviando email...';
+
+    const emailRes = await fetch(`${BASE_URL}/.netlify/functions/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: lead.respondent.email,
+        name: lead.respondent.name,
+        company: lead.respondent.company,
+        eventName: ev.eventName,
+        reportHtml: data.reportHtml,
+        ccAdmin: true,
+      }),
+    });
+    const emailData = await emailRes.json();
+    if (emailData.success) {
+      status.textContent = `✅ Reporte regenerado y enviado a ${lead.respondent.email}`;
+      btn.textContent = '✅ Enviado';
+    } else {
+      status.textContent = '⚠️ Reporte generado pero email falló: ' + (emailData.error || '');
+      btn.disabled = false; btn.textContent = '🔄 Regenerar y enviar reporte';
+    }
+  } catch (err) {
+    status.textContent = '❌ ' + err.message;
+    btn.disabled = false; btn.textContent = '🔄 Regenerar y enviar reporte';
+  }
+}
+
+function previewReport(idx) {
+  const lead = allLeads[idx];
+  if (!lead?.reportHtml) return;
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reporte — ${lead.respondent?.name}</title></head><body style="margin:0;padding:20px;background:#060f1e">${lead.reportHtml}</body></html>`);
+  win.document.close();
+}
+
+async function deleteResponse(eventId, idx) {
   if (!confirm('¿Eliminar esta respuesta? Esta acción no se puede deshacer.')) return;
+
+  // Delete from GitHub
+  try {
+    await fetch(`${BASE_URL}/.netlify/functions/delete-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminPassword: adminPass, eventId, responseIndex: idx }),
+    });
+  } catch (_) {}
+
+  // Delete from localStorage
   lsDeleteResponse(eventId, idx);
   allLeads = lsGetResponses(eventId);
+
+  document.getElementById('leadModal')?.remove();
   renderLeadsTable(allLeads, eventId);
   showToast('✅ Respuesta eliminada');
 }
@@ -982,7 +1231,34 @@ function cloneEvent(eventId) {
 }
 
 
-// ── BACKUP / RESTORE ──────────────────────────────────────────
+// ── LOGO HANDLING ─────────────────────────────────────────────
+function handleLogoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 300000) { showToast('❌ Logo demasiado grande — máximo 300KB'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    document.getElementById('ev-logo').value = base64;
+    const preview = document.getElementById('logoPreview');
+    preview.innerHTML = `<img src="${base64}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+    showToast('✅ Logo cargado');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearLogo() {
+  document.getElementById('ev-logo').value = '';
+  document.getElementById('logoPreview').innerHTML = 'Sin logo';
+  document.getElementById('ev-logo-file').value = '';
+}
+
+function setLogoPreview(base64) {
+  if (!base64) { document.getElementById('logoPreview').innerHTML = 'Sin logo'; return; }
+  document.getElementById('logoPreview').innerHTML = `<img src="${base64}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+}
+
+
 function exportEventsBackup() {
   const events = lsGetEvents();
   if (!events.length) { showToast('No hay eventos para exportar'); return; }
