@@ -8,9 +8,11 @@ exports.handler = async (event) => {
 
   try {
     const events = await gh.getEvents();
-    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' }, body: JSON.stringify({ success: true, events, storage: 'github' }) };
+    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ success: true, events, storage: 'github' }) };
   } catch (err) {
-    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' }, body: JSON.stringify({ success: true, events: [], storage: 'github', note: err.message }) };
+    return { statusCode: 200, headers: { ...cors(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ success: true, events: [], storage: 'github', note: err.message }) };
   }
 };
 function cors() { return { 'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Content-Type','Access-Control-Allow-Methods':'GET,OPTIONS' }; }
