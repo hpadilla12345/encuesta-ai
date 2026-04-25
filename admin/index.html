@@ -183,6 +183,7 @@
   .toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 20px; font-size: 13px; color: var(--accent); z-index: 999; transform: translateY(60px); opacity: 0; transition: all 0.3s; pointer-events: none; }
   .toast.show { transform: translateY(0); opacity: 1; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -418,7 +419,7 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title" id="leadsTableTitle">Respuestas</div>
-          <button class="btn btn-secondary btn-sm" onclick="exportLeads()">⬇ Exportar CSV</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportLeads()">⬇ Exportar XLSX</button>
         </div>
         <div style="overflow-x:auto">
           <table class="leads-table">
@@ -1203,16 +1204,48 @@ async function deleteResponse(eventId, idx) {
 
 function exportLeads() {
   if (!allLeads.length) { showToast('No hay datos para exportar'); return; }
-  const rows = [['Nombre','Empresa','Cargo','Industria','Email','Fecha']];
+
+  // Recopilar todas las preguntas únicas
+  const questionMap = {};
+  allLeads.forEach(l => {
+    const qs = (currentEvent && currentEvent.questions) || [];
+    qs.forEach(q => { if (q.id && q.label) questionMap[q.id] = q.label; });
+    if (l.answers) Object.keys(l.answers).forEach(k => { if (!questionMap[k]) questionMap[k] = k; });
+  });
+  const qIds = Object.keys(questionMap);
+  const qLabels = qIds.map(id => questionMap[id]);
+
+  const headers = ['Nombre','Empresa','Cargo','Industria','Email','Fecha', ...qLabels];
+  const rows = [headers];
+
   allLeads.forEach(l => {
     const r = l.respondent || {};
-    rows.push([r.name,r.company,r.role,r.industry,r.email,l.timestamp?.slice(0,10)].map(v=>`"${v||''}"`));
+    const contact = [r.name||'', r.company||'', r.role||'', r.industry||'', r.email||'', (l.timestamp||'').slice(0,10)];
+    const answers = qIds.map(id => {
+      const val = (l.answers || {})[id];
+      if (Array.isArray(val)) return val.join(' | ');
+      return val != null ? String(val) : '';
+    });
+    rows.push([...contact, ...answers]);
   });
-  const csv = rows.map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `leads_${Date.now()}.csv`;
-  a.click();
+
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = headers.map((h, i) => ({
+      wch: Math.min(60, Math.max(h.length, ...rows.slice(1).map(r => String(r[i]||'').length)))
+    }));
+    const wb = XLSX.utils.book_new();
+    const evName = (currentEvent && currentEvent.eventName || 'leads').slice(0,25).replace(/[^\w\s\-]/g,'');
+    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+    XLSX.writeFile(wb, `leads_${evName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    showToast('✅ XLSX exportado con todas las respuestas');
+  } else {
+    const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+    a.download = 'leads_' + Date.now() + '.csv';
+    a.click();
+  }
 }
 
 // ── EVENT ACTIONS ─────────────────────────────────────────────
