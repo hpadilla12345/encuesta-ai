@@ -1,1 +1,31 @@
-[]
+[
+  {
+    "respondent": {
+      "name": "Hector Padilla",
+      "email": "hpadilla@vermarketer.com",
+      "company": "ACME",
+      "role": "CEO",
+      "industry": "Manufactura / Industria"
+    },
+    "answers": {
+      "q1": "Manufactura discreta (autopartes, maquinaria, electrónica)",
+      "q1b": "100 – 500 empleados",
+      "q2": "Informado — dashboards y KPIs en tiempo real, análisis descriptivo",
+      "q3": [
+        "Control de calidad y visión artificial",
+        "Optimización de producción / scheduling",
+        "Gestión de inventario y cadena de suministro",
+        "Atención a clientes y pedidos",
+        "Finanzas y costos de producción"
+      ],
+      "q4": "Semi-automatizado — algunos sensores pero procesamiento manual",
+      "q5": "Presupuesto insuficiente",
+      "q6": 6,
+      "q7": "Menos de $50,000 USD"
+    },
+    "eventId": "evt_amcham_mty_0521",
+    "eventName": "AmCham Monterrey · Comité Manufactura · 21 Mayo 2026",
+    "reportHtml": "<div style=\"font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#0a1628;color:#f0f4f8;padding:32px;border-radius:12px;\">\n\n<!-- Score -->\n<div style=\"text-align:center;padding:32px 0;border-bottom:1px solid rgba(14,221,169,0.2);margin-bottom:32px;\">\n  <div style=\"font-size:11px;letter-spacing:0.15em;color:#7a8fa8;text-transform:uppercase;margin-bottom:12px;\">Score de Madurez IA</div>\n  <div style=\"font-size:72px;font-weight:800;color:#0edda9;line-height:1;\">52</div>\n  <div style=\"font-size:14px;color:#7a8fa8;margin-top:4px;\">de 100 puntos</div>\n  <div style=\"display:inline-block;background:rgba(14,221,169,0.1);border:1px solid rgba(14,221,169,0.3);border-radius:20px;padding:6px 20px;margin-top:16px;font-size:13px;color:#0edda9;font-weight:600;\">CONECTADO AVANZADO</div>\n</div>\n\n<!-- Análisis -->\n<div style=\"margin-bottom:28px;\">\n  <div style=\"font-size:11px;letter-spacing:0.1em;color:#0edda9;text-transform:uppercase;margin-bottom:12px;font-weight:700;\">Análisis de tu posición</div>\n  <p style=\"color:#b0c4d8;font-size:14px;line-height:1.7;\">ACME está en una posición sólida como empresa Conectada avanzada, con capacidades analíticas establecidas y múltiples casos de uso identificados. Tu infraestructura de dashboards y KPIs en tiempo real te posiciona bien para la siguiente fase. Sin embargo, la limitación presupuestaria y la captura semi-automatizada de datos representan cuellos de botella críticos para acelerar la adopción de IA productiva. Con 5 áreas de casos de uso definidas, tienes claridad estratégica pero necesitas priorización ejecutiva.</p>\n</div>\n\n<!-- Benchmark -->\n<div style=\"background:#0e203d;border:1px solid rgba(14,221,169,0.15);border-radius:8px;padding:20px;margin-bottom:28px;\">\n  <div style=\"font-size:11px;letter-spacing:0.1em;color:#5fa8ff;text-transform:uppercase;margin-bottom:12px;font-weight:700;\">Benchmark · Tu industria en LATAM</div>\n  <p style=\"color:#b0c4d8;font-size:14px;line-height:1.7;\">Estás 8 puntos por arriba del promedio de manufactura discreta en LATAM (44 pts). Tu captura semi-automatizada te coloca en el 32% superior vs el 68% que sigue siendo manual. Sin embargo, tu presupuesto <$50K limita velocidad de implementación comparado con líderes que invierten $200K+ anualmente. El gap de 3.2 años con líderes regionales requiere aceleración en los próximos 18 meses.</p>\n</div>\n\n<!-- Iniciativas -->\n<div style=\"margin-bottom:28px;\">\n  <div style=\"font-size:11px;letter-spacing:0.1em;color:#0edda9;text-transform:uppercase;margin-bottom:16px;font-weight:700;\">Tus 3 iniciativas prioritarias de IA</div>\n  <div style=\"background:#0e203d;border-left:3px solid #0edda9;padding:16px;margin-bottom:12px;\">\n    <div style=\"font-weight:700;font-size:13px;color:#f0f4f8;margin-bottom:6px;\">1. Control de calidad con visión artificial</div>\n    <div style=\"font-size:12px;color:#7a8fa8;\">ROI más rápido (3-6 meses), aprovecha tu infraestructura actual de dashboards, reduce costos de calidad 15-25%.</div>\n  </div>\n  <div style=\"background:#0e203d;border-left:3px solid #5fa8ff;padding:16px;margin-bottom:12px;\">\n    <div style=\"font-weight:700;font-size:13px;color:#f0f4f8;margin-bottom:6px;\">2. Automatización captura de datos de piso</div>\n    <div style=\"font-size:12px;color:#7a8fa8;\">Base fundamental para IA avanzada, elimina cuellos de botella manuales, habilita casos de uso predictivos.</div>\n  </div>\n  <div style=\"background:#0e203d;border-left:3px solid #ff6b6b;padding:16px;\">\n    <div style=\"font-weight:700;font-size:13px;color:#f0f4f8;margin-bottom:6px;\">3. Optimización de scheduling inteligente</div>\n    <div style=\"font-size:12px;color:#7a8fa8;\">Mejora OEE 8-12%, reduce tiempos de setup, maximiza utilización de activos con presupuesto limitado.</div>\n  </div>\n</div>\n\n<!-- CTA -->\n<div style=\"background:linear-gradient(135deg,rgba(14,221,169,0.15),rgba(95,168,255,0.1));border:1px solid rgba(14,221,169,0.3);border-radius:8px;padding:24px;text-align:center;margin-top:32px;\">\n  <div style=\"font-size:16px;font-weight:700;color:#f0f4f8;margin-bottom:8px;\">¿Quieres convertir esto en un plan de acción real?</div>\n  <p style=\"font-size:13px;color:#7a8fa8;margin-bottom:20px;\">Agenda una sesión de AI Discovery gratuita de 60 minutos con nuestros consultores.</p>\n  <a href=\"https://grupoScanda.com/discovery\" style=\"display:inline-block;background:#0edda9;color:#050d1a;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;letter-spacing:0.05em;\">AGENDAR MI SESIÓN →</a>\n</div>\n\n</div>",
+    "timestamp": "2026-05-12T21:34:27.881Z"
+  }
+]
