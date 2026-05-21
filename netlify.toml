@@ -14,5 +14,10 @@
 
 [[redirects]]
   from = "/"
-  to = "/survey/"
+  to = "/admin/"
   status = 302
+
+[[redirects]]
+  from = "/summary"
+  to = "/summary/"
+  status = 301
