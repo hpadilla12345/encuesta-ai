@@ -1267,20 +1267,37 @@ async function generateCompanyReport(domain) {
   if (companyLeads.length === 0) return;
 
   const company = companyLeads[0].respondent?.company || domain;
-  // Get eventId from leads filter (not from editor currentEventId)
+  // Get eventId from leads filter
   const eventId = document.getElementById('leadsEventFilter').value;
-  if (!eventId) { showToast('⚠️ Selecciona un evento en el filtro'); return; }
+  if (!eventId) { showToast('⚠️ Selecciona un evento en el filtro de Leads'); return; }
 
-  // Try localStorage first, then fetch from GitHub
+  // Try localStorage first (by eventId)
   let evData = lsGetEvent(eventId);
-  if (!evData) {
+
+  // If not in localStorage, fetch all events from GitHub and find by eventId or slug
+  if (!evData || !evData.eventId) {
     try {
-      const evRes = await fetch(`${BASE_URL}/.netlify/functions/get-event?slug=${eventId}`);
-      const evJson = await evRes.json();
-      evData = evJson.event || evJson;
+      const listRes = await fetch(`${BASE_URL}/.netlify/functions/list-events`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const allEvs = listData.events || listData || [];
+        evData = allEvs.find(e => e.eventId === eventId || e.slug === eventId);
+      }
     } catch(_) {}
   }
-  if (!evData || !evData.eventId) { showToast('⚠️ No se encontró la configuración del evento'); return; }
+
+  // Last resort: try get-event with the value as slug
+  if (!evData || !evData.eventId) {
+    try {
+      const evRes = await fetch(`${BASE_URL}/.netlify/functions/get-event?slug=${encodeURIComponent(eventId)}`);
+      if (evRes.ok) {
+        const evJson = await evRes.json();
+        evData = evJson.event || evJson;
+      }
+    } catch(_) {}
+  }
+
+  if (!evData || !evData.eventId) { showToast('⚠️ No se encontró configuración del evento. Abre el evento en el editor y guárdalo.'); return; }
 
   // Show loading modal
   showModal('🤖 Generando reporte consolidado...', `
