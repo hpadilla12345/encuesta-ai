@@ -690,53 +690,86 @@ async function init() {
 }
 
 function autoFillTestData() {
-  // Fill contact form
-  const fields = {
-    'resp-name': 'Héctor Padilla',
-    'resp-email': 'hpadilla@scanda.com.mx',
-    'resp-company': 'Grupo Scanda',
-    'resp-role': 'CEO',
-    'resp-industry': 'Tecnología'
-  };
-  Object.entries(fields).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if (el) { el.value = val; el.dispatchEvent(new Event('input')); }
-  });
+  // Fill contact form with correct IDs
+  document.getElementById('f-name').value = 'Héctor Padilla';
+  document.getElementById('f-email').value = 'hpadilla@scanda.com.mx';
+  document.getElementById('f-company').value = 'Grupo Scanda';
+  document.getElementById('f-role').value = 'CEO';
+  // Industry select — pick first real option
+  const indSelect = document.getElementById('f-industry');
+  if (indSelect) {
+    for (let opt of indSelect.options) {
+      if (opt.value && opt.value !== '') { indSelect.value = opt.value; break; }
+    }
+  }
 
-  // Auto-select answers for each question
+  // Auto-fill all question answers
   const qs = eventConfig.questions || [];
   qs.forEach(q => {
     if (q.type === 'scale') {
       answers[q.id] = 3;
-      const btns = document.querySelectorAll('.scale-btn');
-      // Find the right scale for this question
+      // Click the scale button for value 3
+      const container = document.getElementById('scale-' + q.id);
+      if (container) {
+        const btn = [...container.querySelectorAll('.scale-btn')]
+          .find(b => b.textContent.trim() === '3');
+        if (btn) { btn.classList.add('selected'); }
+      }
     } else if (q.type === 'single') {
       const opts = q.options || [];
       if (opts.length > 0) {
         answers[q.id] = opts[0];
-        const btn = document.querySelector(`[onclick*="'${q.id}'"]`);
-        if (btn) btn.classList.add('option-btn-selected');
+        // Click the first option button
+        const allBtns = document.querySelectorAll('.option-btn');
+        allBtns.forEach(b => {
+          if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(q.id) &&
+              b.textContent.trim().startsWith(opts[0].slice(0,15))) {
+            b.classList.add('option-btn-selected');
+          }
+        });
       }
     } else if (q.type === 'multi-open') {
-      const opts = (q.options || []).slice(0, q.maxSelections || 2);
+      const maxSel = q.maxSelections || 3;
+      const opts = (q.options || []).slice(0, maxSel);
       answers[q.id] = {};
       opts.forEach(o => { answers[q.id][o] = true; });
+      // Visual feedback on cards
+      const container = document.getElementById('mo-' + q.id);
+      if (container) {
+        let num = 1;
+        container.querySelectorAll('.mc-card').forEach((card, idx) => {
+          if (idx < maxSel) {
+            card.classList.add('mc-selected');
+            const chk = card.querySelector('.mc-check');
+            if (chk) chk.textContent = String(num++);
+          }
+        });
+      }
     } else if (q.type === 'open' || q.type === 'text') {
-      answers[q.id] = 'Mejorar la toma de decisiones con datos en tiempo real';
+      answers[q.id] = 'Mejorar la toma de decisiones operativas con datos en tiempo real';
     }
   });
 
-  // Show a test banner
-  const banner = document.createElement('div');
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7c3aed;color:#fff;text-align:center;padding:8px;font-size:12px;font-family:monospace;z-index:999';
-  banner.textContent = '🧪 MODO TEST — Datos pre-llenados — Solo da clic en Generar mi reporte';
-  document.body.prepend(banner);
+  // Update dot counters for multi-open
+  qs.filter(q => q.type === 'multi-open' && q.maxSelections).forEach(q => {
+    const maxSel = q.maxSelections;
+    const count = Object.keys(answers[q.id] || {}).filter(k => k !== '_open').length;
+    for (let i = 0; i < maxSel; i++) {
+      const dot = document.getElementById('dot-' + q.id + '-' + i);
+      if (dot) dot.style.background = i < count ? 'var(--accent)' : 'var(--border)';
+    }
+    const txt = document.getElementById('txt-counter-' + q.id);
+    if (txt) { txt.textContent = '✓ Completado'; txt.style.color = 'var(--accent)'; }
+  });
 
   // Scroll to submit button
   setTimeout(() => {
     const btn = document.getElementById('submitBtn');
-    if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 500);
+    if (btn) {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      btn.style.boxShadow = '0 0 0 4px rgba(0,212,160,.4)';
+    }
+  }, 600);
 }
 
 async function fetchFullConfigFromServer(slugOrId) {
