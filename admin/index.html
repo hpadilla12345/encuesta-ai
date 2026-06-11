@@ -451,6 +451,7 @@ let adminPass = '';
 let currentEventId = null;
 let questions = [];
 let allLeads = [];
+let currentLeadsEvent = null; // event config for the currently loaded leads
 
 const DEFAULT_PROMPT = `Eres un consultor senior de transformación digital e inteligencia artificial de Grupo Scanda, especializado en empresas medianas y grandes de LATAM. Tu misión es analizar las respuestas de un diagnóstico rápido de madurez en IA y generar un reporte ejecutivo personalizado, honesto y accionable.
 
@@ -1400,15 +1401,16 @@ async function generateCommercialReport(domain) {
 
   const company = companyLeads[0].respondent?.company || domain;
 
-  // Get event config
+  // Get event config — use cached currentLeadsEvent first
   const eventId = document.getElementById('leadsEventFilter').value;
-  let evData = lsGetEvent(eventId);
+  let evData = currentLeadsEvent || lsGetEvent(eventId);
   if (!evData || !evData.eventId) {
     try {
-      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass || '')}`);
+      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`);
       if (r.ok) {
         const d = await r.json();
         evData = (d.events || []).find(e => e.eventId === eventId || e.slug === eventId);
+        if (evData) { currentLeadsEvent = evData; lsUpsertEvent(evData); }
       }
     } catch(_) {}
   }
