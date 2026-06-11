@@ -789,6 +789,8 @@ function renderQuestionsList() {
             <option value="multi" ${q.type==='multi'?'selected':''}>Múltiple selección</option>
             <option value="scale" ${q.type==='scale'?'selected':''}>Escala 1-10</option>
             <option value="text" ${q.type==='text'?'selected':''}>Texto libre</option>
+             <option value="open" ${q.type==='open'?'selected':''}>Respuesta abierta</option>
+             <option value="multi-open" ${q.type==='multi-open'?'selected':''}>Selección múltiple + texto libre</option>
           </select>
         </div>
         <div class="field">
@@ -803,7 +805,7 @@ function renderQuestionsList() {
         <div class="field-row">
           <div class="field"><label>Subtítulo</label><input type="text" value="${q.sub||''}" onchange="questions[${i}].sub=this.value" placeholder="1 = Bajo · 10 = Alto"></div>
         </div>` : ''}
-      ${(q.type === 'single' || q.type === 'multi') ? `
+      ${(q.type === 'single' || q.type === 'multi' || q.type === 'multi-open') ? `
         <div class="section-label">Opciones</div>
         <div class="options-list" id="opts-${i}">
           ${(q.options||[]).map((opt, oi) => `
