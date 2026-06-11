@@ -1030,7 +1030,7 @@ function renderLeadsTable(leads, eventId) {
       l.respondent?.role || '—',
       l.respondent?.industry || '—',
       l.respondent?.email || '—',
-      l.timestamp ? new Date(l.timestamp).toLocaleDateString('es-MX') : '—',
+      l.timestamp ? new Date(l.timestamp).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + new Date(l.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '—',
     ];
     cells.forEach((val, i) => {
       const td = document.createElement('td');
