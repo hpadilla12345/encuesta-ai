@@ -129,6 +129,14 @@ Genera el reporte consolidado ejecutivo.`;
     // Wrap in full page HTML with styles
     const fullHtml = buildFullHTML(company, leads, reportHtml, eventConfig.eventName);
 
+    // Save to GitHub cache
+    const { eventId } = eventConfig;
+    if (eventId && domain) {
+      const gh = require('./gh-storage');
+      gh.saveFile(`data/reports/${eventId}/company-${domain}.html`, fullHtml, `cache: company report ${domain}`)
+        .catch(e => console.log('Cache save failed (non-fatal):', e.message));
+    }
+
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
