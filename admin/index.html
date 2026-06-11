@@ -1340,7 +1340,7 @@ Cuando las respuestas difieran entre roles, señala las brechas de percepción �
 Cuando coincidan, valídalos como consenso organizacional.
 Usa el promedio de scores para el cálculo del score global, pero menciona la distribución por rol cuando sea relevante.`;
 
-    const res = await fetch(\`\${BASE_URL}/.netlify/functions/generate-report\`, {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
