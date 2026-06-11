@@ -36,7 +36,9 @@ exports.handler = async (event) => {
       return `${resp.name} (${resp.role} · ${resp.industry}):\n${lines}`;
     }).join('\n\n---\n\n');
 
-    const systemPrompt = `Eres un consultor senior de Grupo Scanda preparando el análisis interno de oportunidad comercial para un prospecto.
+    const isEventReport = domain === "all";
+    const reportContext = isEventReport ? `evento "${company}" con ${leads.length} respondentes de ${[...new Set(leads.map(l=>l.respondent?.company).filter(Boolean))].join(", ")}` : `empresa "${company}"`;
+    const systemPrompt = `Eres un consultor senior de Grupo Scanda preparando el análisis interno de oportunidad comercial para el ${reportContext}.
 
 PORTAFOLIO MAIA / SCANDA — ofertas disponibles:
 
