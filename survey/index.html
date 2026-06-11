@@ -708,11 +708,11 @@ function renderQuestionInput(q) {
   const counterId = `counter-${q.id}`;
   return `<div>
     ${maxSel ? `
-    <div id="${counterId}" style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <div id="ctr-${q.id}" style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
       <div style="display:flex;gap:4px">
         ${Array.from({length:maxSel},(_,i)=>`<div id="dot-${q.id}-${i}" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:.2s"></div>`).join('')}
       </div>
-      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)" id="txt-${counterId}">Selecciona ${maxSel}</span>
+      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)" id="txt-counter-${q.id}">Selecciona ${maxSel}</span>
     </div>` : ''}
     <div style="display:flex;flex-direction:column;gap:8px" id="mo-${q.id}">
       ${opts.map((opt,oi) => `
@@ -805,41 +805,60 @@ function selectMultiOpen(qid, value, card, maxSel, cardId) {
 
   const selected = answers[qid];
   const isSelected = selected[value];
+  const chk = card.querySelector('.mc-check');
 
   if (isSelected) {
-    // Deselect
     delete selected[value];
     card.classList.remove('mc-selected');
+    if (chk) chk.textContent = '';
   } else {
     const currentCount = Object.keys(selected).filter(k => k !== '_open').length;
     if (maxSel > 0 && currentCount >= maxSel) {
-      // Shake feedback — can't select more
       card.style.animation = 'mcShake .3s ease';
-      setTimeout(() => card.style.animation = '', 300);
+      setTimeout(() => card.style.animation = '', 350);
       return;
     }
     selected[value] = true;
     card.classList.add('mc-selected');
+    if (chk) chk.textContent = String(currentCount + 1);
   }
 
-  // Update dot indicators + text
+  // Re-number all selected checkboxes
+  let num = 1;
+  const container = document.getElementById('mo-' + qid);
+  if (container) {
+    container.querySelectorAll('.mc-card').forEach(c => {
+      const cv = c.querySelector('.mc-check');
+      if (c.classList.contains('mc-selected')) {
+        if (cv) cv.textContent = String(num++);
+      } else {
+        if (cv) cv.textContent = '';
+      }
+    });
+  }
+
+  // Update dot indicators + counter text
   if (maxSel > 0) {
     const count = Object.keys(selected).filter(k => k !== '_open').length;
     for (let i = 0; i < maxSel; i++) {
-      const dot = document.getElementById(`dot-${qid}-${i}`);
+      const dot = document.getElementById('dot-' + qid + '-' + i);
       if (dot) dot.style.background = i < count ? 'var(--accent)' : 'var(--border)';
     }
-    const txt = document.getElementById(`txt-counter-${qid}`);
+    const txt = document.getElementById('txt-counter-' + qid);
     if (txt) {
-      txt.textContent = count >= maxSel ? '✓ Listo' : `Selecciona ${maxSel - count} más`;
-      txt.style.color = count >= maxSel ? 'var(--accent)' : 'var(--muted)';
+      if (count >= maxSel) {
+        txt.textContent = '✓ Completado';
+        txt.style.color = 'var(--accent)';
+      } else {
+        txt.textContent = 'Selecciona ' + (maxSel - count) + ' más';
+        txt.style.color = 'var(--muted)';
+      }
     }
-    // Dim unavailable cards when max reached
-    const container = document.getElementById(`mo-${qid}`);
+    // Dim unselected when limit reached
     if (container) {
       container.querySelectorAll('.mc-card').forEach(c => {
         if (count >= maxSel && !c.classList.contains('mc-selected')) {
-          c.style.opacity = '0.4';
+          c.style.opacity = '0.35';
           c.style.pointerEvents = 'none';
         } else {
           c.style.opacity = '';
