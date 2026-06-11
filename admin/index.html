@@ -1277,7 +1277,7 @@ async function generateCompanyReport(domain) {
   // If not in localStorage, fetch all events from GitHub and find by eventId or slug
   if (!evData || !evData.eventId) {
     try {
-      const listRes = await fetch(`${BASE_URL}/.netlify/functions/list-events`);
+      const listRes = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass || '')}`);
       if (listRes.ok) {
         const listData = await listRes.json();
         const allEvs = listData.events || listData || [];
@@ -1382,7 +1382,7 @@ async function openSummary() {
   // If not in localStorage, fetch all events and find by eventId
   if (!slug) {
     try {
-      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events`);
+      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass || '')}`);
       if (r.ok) {
         const d = await r.json();
         const found = (d.events || d || []).find(e => e.eventId === useId || e.slug === useId);
