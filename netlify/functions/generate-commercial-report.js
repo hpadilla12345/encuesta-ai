@@ -123,6 +123,14 @@ ${respondents}`;
 
     const fullHtml = buildHTML(company, leads, aiContent, eventConfig.eventName);
 
+    // Save to GitHub cache
+    const { eventId } = eventConfig;
+    if (eventId) {
+      const gh = require('./gh-storage');
+      gh.saveFile(`data/reports/${eventId}/maia.html`, fullHtml, `cache: MAIA report ${eventId}`)
+        .catch(e => console.log('Cache save failed (non-fatal):', e.message));
+    }
+
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
