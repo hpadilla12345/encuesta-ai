@@ -214,9 +214,9 @@
 const BASE_URL = location.origin;
 
 // Load data from sessionStorage
-const reportHtml = sessionStorage.getItem('reportHtml');
-const respondent = JSON.parse(sessionStorage.getItem('respondent') || '{}');
-const eventName = sessionStorage.getItem('eventName') || 'AI Survey';
+const reportHtml = localStorage.getItem('report_reportHtml');
+const respondent = JSON.parse(localStorage.getItem('report_respondent') || '{}');
+const eventName = localStorage.getItem('report_eventName') || 'AI Survey';
 
 // Populate
 document.getElementById('eventNameBadge').textContent = eventName;
@@ -271,9 +271,9 @@ async function resendEmail() {
 }
 
 function downloadHTML() {
-  const reportHtml = sessionStorage.getItem('reportHtml');
-  const respondent = JSON.parse(sessionStorage.getItem('respondent') || '{}');
-  const eventName = sessionStorage.getItem('eventName') || 'AI Maturity Assessment';
+  const reportHtml = localStorage.getItem('report_reportHtml');
+  const respondent = JSON.parse(localStorage.getItem('report_respondent') || '{}');
+  const eventName = localStorage.getItem('report_eventName') || 'AI Maturity Assessment';
   if (!reportHtml) { alert('No hay reporte disponible'); return; }
 
   const fullHtml = `<!DOCTYPE html>
