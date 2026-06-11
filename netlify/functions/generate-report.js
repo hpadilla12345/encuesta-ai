@@ -114,6 +114,21 @@ Genera el JSON con los valores de todas las variables.`;
     const responseData = { respondent, answers, eventId, eventName, reportHtml, timestamp: new Date().toISOString() };
     try { await gh.saveResponse(eventId, responseData); } catch(ghErr) { console.log('Save failed:', ghErr.message); }
 
+    // Send email directly from server — always complete HTML, not affected by browser timeout
+    const resendEmail = eventConfig.ctaUrl || null;
+    fetch(`${process.env.URL || 'https://encuesta-ia.netlify.app'}/.netlify/functions/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: respondent.email,
+        name: respondent.name,
+        company: respondent.company,
+        eventName,
+        reportHtml,
+        ccAdmin: true,
+      }),
+    }).catch(e => console.log('Email send failed (non-fatal):', e.message));
+
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type':'application/json' },
