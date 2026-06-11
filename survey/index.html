@@ -1144,7 +1144,7 @@ async function submitSurvey() {
     console.error('submitSurvey error:', err.message);
     try {
       await new Promise(r => setTimeout(r, 3000));
-      const pollRes = await fetch(`${BASE_URL}/.netlify/functions/list-responses?eventId=${eventConfig.eventId}`);
+      const pollRes = await fetch(`${BASE_URL}/.netlify/functions/list-responses?eventId=${eventConfig.eventId}&email=${encodeURIComponent(respondent.email)}`);
       if (pollRes.ok) {
         const pollData = await pollRes.json();
         const myResponse = (pollData.responses || [])
@@ -1160,7 +1160,7 @@ async function submitSurvey() {
       }
     } catch(_) {}
     hideLoading();
-    showError(err.message || 'Ocurrió un error. Por favor intenta de nuevo.');
+    showError('Tu reporte se está procesando. Si no abre automáticamente, revisa tu correo en 1-2 minutos o intenta de nuevo.');
   }
 }
 
