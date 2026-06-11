@@ -347,6 +347,37 @@
     .scale-container { gap: 4px; }
     .scale-btn { font-size: 11px; }
   }
+
+/* ── Multi-choice cards ─────────────────────────────── */
+.mc-card {
+  display:flex;align-items:center;gap:14px;
+  padding:14px 18px;
+  background:var(--surface2);
+  border:2px solid var(--border);
+  border-radius:10px;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+  user-select:none;
+}
+.mc-card:hover { border-color:rgba(0,212,160,.4);background:rgba(0,212,160,.04); }
+.mc-card.mc-selected { border-color:var(--accent);background:rgba(0,212,160,.1); }
+.mc-check {
+  min-width:28px;height:28px;
+  border:2px solid var(--border);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);
+  font-size:13px;font-weight:800;color:transparent;
+  font-family:var(--mono,monospace);
+  transition:all .15s;flex-shrink:0;
+}
+.mc-card:hover .mc-check { border-color:rgba(0,212,160,.4); }
+.mc-card.mc-selected .mc-check { background:var(--accent);border-color:var(--accent);color:#000; }
+.mc-label { font-size:14px;line-height:1.4;color:var(--text);transition:color .15s; }
+.mc-card.mc-selected .mc-label { color:var(--accent);font-weight:600; }
+.q-open-input:focus { border-color:var(--accent) !important;outline:none; }
+@keyframes mcShake {
+  0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)}
+}
 </style>
 </head>
 <body>
