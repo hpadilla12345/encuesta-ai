@@ -92,4 +92,31 @@ async function deleteResponse(eventId, responseIndex) {
   await ghPut(`data/responses/${eventId}.json`, list, sha, `delete response ${responseIndex} @ ${eventId}`);
 }
 
-module.exports = { getEvents, saveEvent, deleteEvent, getResponses, saveResponse, deleteResponse };
+
+async function saveFile(filePath, content, message) {
+  const token = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_REPO_OWNER || 'hpadilla12345';
+  const repo  = process.env.GITHUB_REPO_NAME  || 'encuesta-ai';
+  const hdrs  = { Authorization:`Bearer ${token}`, Accept:'application/vnd.github+json', 'Content-Type':'application/json', 'X-GitHub-Api-Version':'2022-11-28' };
+  const url   = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+  let sha;
+  try { const r = await fetch(url, {headers:hdrs}); const d = await r.json(); sha = d.sha; } catch(_) {}
+  const body = { message, content: Buffer.from(content).toString('base64') };
+  if (sha) body.sha = sha;
+  const res = await fetch(url, { method:'PUT', headers:hdrs, body:JSON.stringify(body) });
+  return res.ok;
+}
+
+async function getFile(filePath) {
+  const token = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_REPO_OWNER || 'hpadilla12345';
+  const repo  = process.env.GITHUB_REPO_NAME  || 'encuesta-ai';
+  const hdrs  = { Authorization:`Bearer ${token}`, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' };
+  const url   = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+  const res = await fetch(url, {headers:hdrs});
+  if (!res.ok) return null;
+  const d = await res.json();
+  return Buffer.from(d.content.replace(/\n/g,''), 'base64').toString('utf-8');
+}
+
+module.exports = { getEvents, saveEvent, deleteEvent, getResponses, saveResponse, deleteResponse, saveFile, getFile };
