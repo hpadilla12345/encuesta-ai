@@ -1058,77 +1058,69 @@ async function submitSurvey() {
     if (!q.required) return false;
     const ans = answers[q.id];
     if (ans === undefined || ans === null || ans === '') return true;
+    if (typeof ans === 'object' && !Array.isArray(ans) && Object.keys(ans).filter(k=>k!=='_open'&&ans[k]).length===0) return true;
     if (Array.isArray(ans) && ans.length === 0) return true;
     return false;
   });
   if (unanswered.length > 0) {
-    document.getElementById('questions-error').textContent = `Por favor responde: ${unanswered.map(q => q.label.slice(0,40)).join(', ')}`;
+    document.getElementById('questions-error').textContent = "Por favor responde todas las preguntas requeridas.";
     document.getElementById('questions-error').classList.add('show');
     return;
   }
   document.getElementById('questions-error').classList.remove('show');
 
+  // Show loading overlay
+  showLoading();
+
   const configToSend = {
-    eventId:        eventConfig.eventId || 'demo',
-    eventName:      eventConfig.eventName,
-    questions:      questions,
-    systemPrompt:   eventConfig.systemPrompt   || DEMO_CONFIG.systemPrompt,
+    eventId: eventConfig.eventId || 'demo',
+    eventName: eventConfig.eventName,
+    questions: questions,
+    systemPrompt: eventConfig.systemPrompt || DEMO_CONFIG.systemPrompt,
     reportTemplate: eventConfig.reportTemplate || DEMO_CONFIG.reportTemplate,
-    ctaUrl:         eventConfig.ctaUrl,
-    ctaText:        eventConfig.ctaText,
+    ctaUrl: eventConfig.ctaUrl,
+    ctaText: eventConfig.ctaText,
   };
 
-  // Fire-and-forget — server generates + emails the report
-  fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
-  }).then(async res => {
-    // If server responds fast, open report directly
-    try {
-      const data = await res.json();
-      if (data.success && data.reportHtml) {
-        localStorage.setItem('report_reportHtml', data.reportHtml);
-        localStorage.setItem('report_respondent', JSON.stringify(respondent));
-        localStorage.setItem('report_eventName', eventConfig.eventName);
-        window.location.href = '/report/';
-      }
-    } catch(_) {}
-  }).catch(() => {});
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
+    });
+    const rawText = await res.text();
+    let data;
+    try { data = JSON.parse(rawText); } catch(_) { data = { success: false }; }
 
-  // Show success immediately — don't wait for server
-  showSuccessScreen(respondent.email);
+    if (data.success && data.reportHtml) {
+      localStorage.setItem('report_reportHtml', data.reportHtml);
+      localStorage.setItem('report_respondent', JSON.stringify(respondent));
+      localStorage.setItem('report_eventName', eventConfig.eventName);
+      window.location.href = '/report/';
+    } else {
+      // Server responded but no report — show email confirmation
+      showEmailConfirm(respondent.email);
+    }
+  } catch(err) {
+    // Timeout or network error — show email confirmation
+    console.error('submitSurvey:', err.message);
+    showEmailConfirm(respondent.email);
+  }
 }
 
-function showSuccessScreen(email) {
-  // Hide questionnaire, show success message
-  const wrap = document.getElementById('questions-wrap') || document.querySelector('main') || document.body;
-  const hero = document.getElementById('hero-section');
-  if (hero) hero.style.display = 'none';
-
-  // Replace page content with success card
-  document.body.innerHTML = `
-    <div style="min-height:100vh;background:#050d1a;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif">
-      <div style="background:#0b1a30;border:1px solid #1e3a5f;border-radius:16px;max-width:480px;width:100%;padding:40px;text-align:center">
-        <div style="font-size:48px;margin-bottom:20px">✅</div>
-        <h1 style="color:#fff;font-size:22px;font-weight:800;margin-bottom:10px">¡Listo!</h1>
-        <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin-bottom:6px">
-          Tu reporte personalizado de madurez en IA está siendo generado.
-        </p>
-        <p style="color:#0edda9;font-size:15px;font-weight:600;margin-bottom:24px">
-          Lo recibirás en <strong style="color:#fff">${email}</strong> en los próximos minutos.
-        </p>
-        <div style="background:#050d1a;border-radius:10px;padding:16px;margin-bottom:24px">
-          <p style="color:#64748b;font-size:13px;line-height:1.6">
-            💡 Revisa tu bandeja de entrada y tu carpeta de spam.
-            El reporte incluye tu score Gartner, brechas críticas y plan de acción.
-          </p>
-        </div>
-        <a href="/" style="display:inline-block;background:linear-gradient(135deg,#00c2a8,#0097ff);color:#000;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none">
-          Volver al inicio
-        </a>
-      </div>
+function showEmailConfirm(email) {
+  hideLoading();
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:#050d1a;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:"Inter",sans-serif';
+  overlay.innerHTML = `
+    <div style="background:#0b1a30;border:1px solid #1e3a5f;border-radius:16px;max-width:480px;width:100%;padding:40px;text-align:center">
+      <div style="font-size:48px;margin-bottom:20px">✅</div>
+      <h2 style="color:#fff;font-size:20px;font-weight:800;margin-bottom:10px">¡Listo! Tu reporte está en camino</h2>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin-bottom:8px">Tu diagnóstico personalizado de madurez en IA está siendo generado.</p>
+      <p style="color:#0edda9;font-size:14px;font-weight:600;margin-bottom:24px">Lo recibirás en <strong style="color:#fff">${email}</strong> en los próximos minutos.</p>
+      <p style="color:#64748b;font-size:12px">Revisa también tu carpeta de spam.</p>
     </div>`;
+  document.body.appendChild(overlay);
 }
 
 function showLoading() {
