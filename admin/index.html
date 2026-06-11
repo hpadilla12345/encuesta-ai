@@ -974,12 +974,19 @@ async function loadLeads() {
   document.getElementById('leadsTableBody').innerHTML =
     '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:32px">Cargando desde GitHub...</td></tr>';
 
+  // Fetch event config in background so report buttons always work
+  fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      const found = (d?.events || []).find(e => e.eventId === eventId || e.slug === eventId);
+      if (found) { currentLeadsEvent = found; lsUpsertEvent(found); }
+    }).catch(() => {});
+
   try {
     const res = await fetch(`${BASE_URL}/.netlify/functions/list-responses?adminPassword=${encodeURIComponent(adminPass)}&eventId=${encodeURIComponent(eventId)}`);
     const data = await res.json();
     if (data.success && data.responses?.length) {
       allLeads = data.responses;
-      // Sync to localStorage
       const all = lsGetAllResponses();
       all[eventId] = data.responses;
       lsSaveAllResponses(all);
