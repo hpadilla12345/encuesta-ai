@@ -144,7 +144,7 @@
     "questions": [
       {
         "id": "q1781152866020",
-        "type": "multi",
+        "type": "single",
         "label": "¿Cuál es tu rol en la organización o a que área perteneces?",
         "required": true,
         "options": [
@@ -157,7 +157,7 @@
       },
       {
         "id": "q1781152990670",
-        "type": "multi",
+        "type": "single",
         "label": "¿De qué industria es tu empresa?",
         "required": true,
         "options": [
@@ -172,7 +172,7 @@
       },
       {
         "id": "q1781153096171",
-        "type": "multi",
+        "type": "single",
         "label": "¿Cuántas personas trabajan en tu empresa?",
         "required": true,
         "options": [
@@ -191,7 +191,9 @@
           "1= No existe",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
       },
       {
         "id": "q1781153230487",
@@ -202,7 +204,9 @@
           "Opción A",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
       },
       {
         "id": "q1781153232087",
@@ -213,7 +217,9 @@
           "Opción A",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
       },
       {
         "id": "q1781153261404",
@@ -224,7 +230,9 @@
           "Opción A",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
       },
       {
         "id": "q1781153261954",
@@ -235,7 +243,9 @@
           "Opción A",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
       },
       {
         "id": "q1781153262554",
@@ -246,7 +256,9 @@
           "Opción A",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
       },
       {
         "id": "q1781153364238",
@@ -257,7 +269,88 @@
           "Opción A",
           "Opción B"
         ],
-        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando"
+        "sub": "1=No existe · 3=En desarrollo · 5=Optimizando",
+        "min": 1,
+        "max": 5
+      },
+      {
+        "id": "qC1",
+        "type": "multi-open",
+        "required": true,
+        "label": "¿Cuáles son los principales inhibidores para adoptar IA en tu organización?",
+        "sub": "Selecciona todos los que apliquen — puedes agregar uno propio al final",
+        "options": [
+          "Falta de estrategia o visión clara desde dirección",
+          "Calidad o disponibilidad de datos",
+          "Presupuesto no aprobado",
+          "Falta de talento interno",
+          "Infraestructura tecnológica insuficiente",
+          "Resistencia cultural al cambio",
+          "No sabemos por dónde empezar",
+          "Preocupaciones de seguridad o regulación"
+        ]
+      },
+      {
+        "id": "qC2",
+        "type": "multi-open",
+        "required": true,
+        "label": "¿Qué iniciativas de IA crees que debería tener tu empresa en los próximos 12 meses?",
+        "sub": "Selecciona todas las que apliquen — puedes agregar una propia",
+        "options": [
+          "Automatización de procesos operativos",
+          "Análisis predictivo y toma de decisiones",
+          "Atención a clientes / ventas con IA",
+          "Control de calidad y eficiencia",
+          "Gestión del conocimiento interno",
+          "Agentes de IA para áreas específicas (finanzas, RH, operaciones)",
+          "Estrategia y roadmap de IA corporativo",
+          "Capacitación y cultura de IA en el equipo"
+        ]
+      },
+      {
+        "id": "qC3",
+        "type": "open",
+        "required": false,
+        "label": "¿Cuál es el principal problema que crees que IA debería resolver en tu organización?",
+        "placeholder": "Describe brevemente el reto más importante que enfrentas hoy..."
+      },
+      {
+        "id": "qC4",
+        "type": "single",
+        "required": true,
+        "label": "¿Existe presupuesto para iniciativas de IA en los próximos 12 meses?",
+        "options": [
+          "Sí, está aprobado",
+          "Está en proceso de aprobación",
+          "Hay voluntad pero no está formalizado",
+          "No hay presupuesto definido aún",
+          "No lo sé"
+        ]
+      },
+      {
+        "id": "qC5",
+        "type": "single",
+        "required": true,
+        "label": "¿En qué etapa están sus iniciativas de IA hoy?",
+        "options": [
+          "Apenas explorando el tema",
+          "Tenemos un piloto activo",
+          "Tenemos algo en producción",
+          "Estamos escalando iniciativas",
+          "No hemos iniciado nada aún"
+        ]
+      },
+      {
+        "id": "qC6",
+        "type": "single",
+        "required": true,
+        "label": "¿En qué plazo esperas ver resultados concretos de IA en tu empresa?",
+        "options": [
+          "0–3 meses",
+          "3–6 meses",
+          "6–12 meses",
+          "Más de 12 meses"
+        ]
       }
     ],
     "systemPrompt": "Eres un consultor senior de transformación digital e IA con 15 años de experiencia en empresas de LATAM.\n\nTu tarea es analizar las respuestas de un directivo a un AI Maturity Assessment basado en el framework Gartner, y generar un reporte ejecutivo personalizado que le ayude a entender su posición actual y sus próximos pasos.\n\nFRAMEWORK GARTNER — 7 DIMENSIONES (escala 1–5):\n1. AI Strategy (Estrategia)\n2. AI Value (Valor e iniciativas)\n3. AI Organization (Organización)\n4. AI People & Culture (Personas y cultura)\n5. AI Governance (Gobernanza)\n6. AI Engineering (Ingeniería y sistemas)\n7. AI Data (Datos)\n\nNIVELES GARTNER GLOBALES:\n- 1.0–1.9: Planning — La organización considera el uso de IA\n- 2.0–2.9: Experimenting — Pilotos y pruebas de concepto\n- 3.0–3.9: Stabilization — Soluciones de IA en producción\n- 4.0–4.9: Scaling — IA aplicada en toda la organización\n- 5.0: Leading — La organización depende y optimiza continuamente la IA\n\nCÁLCULO DEL SCORE:\n- Score global = promedio de las 7 dimensiones (escala 1.0–5.0)\n- Score 0–100 = ((score_global - 1) / 4) * 100\n\nBENCHMARKS GARTNER LATAM 2025–2026:\n- Score promedio LATAM: 2.4/5 (Experimenting)\n- Manufactura: 2.2/5 · Servicios Financieros: 2.8/5 · Retail: 2.3/5\n- La dimensión más rezagada en LATAM: AI Governance (1.8/5 promedio)\n- La dimensión más avanzada: AI Engineering (2.9/5)\n- 68% de empresas LATAM no tiene estrategia de IA documentada\n- Solo 22% tiene datos listos para alimentar modelos de IA\n\nGENERA el reporte llenando TODAS las variables {{...}} del template.\n\nREGLAS:\n- Tono ejecutivo, directo, empático. No uses jerga técnica innecesaria.\n- Basa TODO en las respuestas reales — no inventes datos.\n- Las brechas más grandes entre dimensiones son el insight más valioso.\n- Identifica si hay contradicción entre el nivel declarado y los inhibidores/presupuesto reportados.\n- El dolor principal expresado en texto libre es el argumento de venta más poderoso — úsalo.\n- Responde ÚNICAMENTE con el HTML del reporte. Sin markdown, sin explicaciones.",
