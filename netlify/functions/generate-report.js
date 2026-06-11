@@ -26,10 +26,36 @@ exports.handler = async (event) => {
 
   try {
     const { answers, respondent, eventConfig } = JSON.parse(event.body);
-    let { systemPrompt, reportTemplate, questions, eventName, eventId } = eventConfig;
+    let { questions, eventName, eventId } = eventConfig;
 
-    if (!systemPrompt) systemPrompt = "Eres un consultor experto en IA de Grupo Scanda. Analiza las respuestas del AI Maturity Assessment basado en el framework Gartner (7 dimensiones, escala 1-5). Genera un reporte ejecutivo con: Score global, nivel Gartner, análisis de brechas por dimensión, top 3 iniciativas recomendadas y próximos pasos. Llena TODAS las variables {{...}} del template. Responde SOLO con el HTML puro sin markdown.";
-    if (!reportTemplate) reportTemplate = "<div style='font-family:Arial;background:#0a1628;color:#f0f4f8;padding:32px;border-radius:12px;max-width:600px;margin:0 auto'><h2 style='color:#0edda9;text-align:center'>Score Gartner: {{SCORE_GARTNER}}/5.0</h2><h3 style='color:#0edda9;text-align:center'>{{NIVEL_GARTNER}}</h3><p>{{ANALISIS_POSICION}}</p><h3 style='color:#0edda9'>Brechas críticas</h3><p>{{BRECHAS}}</p><h3 style='color:#0edda9'>Top 3 iniciativas</h3><p>{{INICIATIVAS}}</p></div>";
+    // SIEMPRE lee systemPrompt y reportTemplate frescos de GitHub para garantizar template actual
+    let systemPrompt = null;
+    let reportTemplate = null;
+    try {
+      const owner = process.env.GITHUB_REPO_OWNER || 'hpadilla12345';
+      const repo  = process.env.GITHUB_REPO_NAME  || 'encuesta-ai';
+      const token = process.env.GITHUB_TOKEN;
+      const r = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/data/events.json`,
+        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        const events = JSON.parse(Buffer.from(d.content, 'base64').toString('utf8'));
+        const ev = events.find(e => e.eventId === eventId || e.slug === eventId);
+        if (ev) {
+          systemPrompt    = ev.systemPrompt    || null;
+          reportTemplate  = ev.reportTemplate  || null;
+          questions       = ev.questions       || questions;
+        }
+      }
+    } catch(ghErr) {
+      console.log('GitHub fetch fallback:', ghErr.message);
+    }
+
+    // Fallbacks solo si GitHub no respondió
+    if (!systemPrompt) systemPrompt = eventConfig.systemPrompt || 'Eres consultor senior de IA del CoE de Grupo Scanda. Analiza el AI Maturity Assessment (Gartner 7D, escala 1-5) y genera el reporte llenando todas las variables {{...}} del template. Solo HTML.';
+    if (!reportTemplate) reportTemplate = eventConfig.reportTemplate || '<div style="font-family:Arial;padding:32px;color:#1a2332"><h2>Score: {{SCORE_GARTNER}}/5.0 · {{NIVEL_GARTNER}}</h2><p>{{ANALISIS_POSICION}}</p><p>{{BRECHAS}}</p><p>{{INICIATIVAS}}</p></div>';
 
     // Replace CTA values
     const { ctaText, ctaUrl } = eventConfig;
