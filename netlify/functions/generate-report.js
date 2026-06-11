@@ -118,7 +118,13 @@ Genera texto para estas 5 secciones separadas por ===:
       }],
     });
 
-    const parts = msg.content[0].text.split('===').map(s => s.trim());
+    // Strip markdown from Claude output
+    const rawText = msg.content[0].text
+      .replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold** → text
+      .replace(/\*([^*]+)\*/g, '$1')         // *italic* → text
+      .replace(/^[-*] /gm, '• ')              // bullet markers
+      .replace(/^#{1,3} /gm, '');              // headings
+    const parts = rawText.split('===').map(s => s.trim());
     const analisis    = parts[0] || '';
     const benchmark   = parts[1] || '';
     const brechasText = parts[2] || '';
