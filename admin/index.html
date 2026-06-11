@@ -1369,14 +1369,29 @@ function closeModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function openSummary() {
-  // Use the leads filter event first, fallback to editor event
+async function openSummary() {
   const filterId = document.getElementById('leadsEventFilter')?.value;
-  const evId = filterId || currentEventId;
-  if (!evId) { showToast('⚠️ Selecciona un evento primero'); return; }
-  const ev = lsGetEvent(evId);
-  const slug = ev?.slug || evId;
-  window.open(`/summary/?evento=${encodeURIComponent(slug)}`, '_blank');
+  const useId = filterId || currentEventId;
+  if (!useId) { showToast('⚠️ Selecciona un evento en el filtro'); return; }
+
+  // Try localStorage first
+  let slug = null;
+  const evLocal = lsGetEvent(useId);
+  if (evLocal?.slug) { slug = evLocal.slug; }
+
+  // If not in localStorage, fetch all events and find by eventId
+  if (!slug) {
+    try {
+      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events`);
+      if (r.ok) {
+        const d = await r.json();
+        const found = (d.events || d || []).find(e => e.eventId === useId || e.slug === useId);
+        if (found) slug = found.slug;
+      }
+    } catch(_) {}
+  }
+
+  window.open(`/summary/?evento=${encodeURIComponent(slug || useId)}`, '_blank');
 }
 
 function exportLeads() {
