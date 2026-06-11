@@ -1375,6 +1375,80 @@ function showModal(title, bodyHtml) {
   modal.style.display = "flex";
 }
 
+// ── OPEN COMMERCIAL REPORT ────────────────────────────────────────────────────
+async function openCommercialReport() {
+  if (!allLeads || allLeads.length === 0) { showToast('⚠️ Carga primero los leads del evento'); return; }
+  const eventId = document.getElementById('leadsEventFilter').value;
+  let evData = currentLeadsEvent || lsGetEvent(eventId);
+  if (!evData || !evData.eventId) {
+    try {
+      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`);
+      if (r.ok) { const d = await r.json(); evData = (d.events||[]).find(e=>e.eventId===eventId||e.slug===eventId); if(evData){currentLeadsEvent=evData;lsUpsertEvent(evData);} }
+    } catch(_) {}
+  }
+  if (!evData || !evData.eventId) { showToast('⚠️ No se encontró config del evento'); return; }
+  await loadCachedReport(evData.eventId, 'maia', null, evData.eventName, allLeads, evData);
+}
+
+// ── LOAD CACHED OR GENERATE REPORT ───────────────────────────────────────────
+async function loadCachedReport(eventId, type, domain, label, leads, evData) {
+  // 1. Try cache first (instant)
+  try {
+    const params = new URLSearchParams({ eventId, type });
+    if (domain) params.append('domain', domain);
+    const cacheRes = await fetch(`${BASE_URL}/.netlify/functions/get-cached-report?${params}`);
+    if (cacheRes.ok) {
+      const cacheData = await cacheRes.json();
+      if (cacheData.found && cacheData.html) {
+        localStorage.setItem('report_reportHtml', cacheData.html);
+        localStorage.setItem('report_respondent', JSON.stringify({ name: label||eventId, company: label||'', role:'', email:'' }));
+        localStorage.setItem('report_eventName', label || eventId);
+        window.open('/report/', '_blank');
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // 2. Not cached — generate with single Claude call
+  const color = type === 'maia' ? '#f59e0b' : '#818cf8';
+  const icon  = type === 'maia' ? '💼' : '🏢';
+  showModal(icon + ' Generando reporte...', '<div style="text-align:center;padding:28px">' +
+    '<div style="font-size:36px;margin-bottom:12px">' + icon + '</div>' +
+    '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">' + (label||'') + '</div>' +
+    '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Primera vez — generando reporte (~20 seg).<br>Se guardará en cache para la próxima vez.</div>' +
+    '<div style="display:flex;justify-content:center;gap:6px">' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';animation:pulse 1.2s ease infinite"></div>' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';animation:pulse 1.2s ease infinite .2s"></div>' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';animation:pulse 1.2s ease infinite .4s"></div>' +
+    '</div></div>');
+
+  try {
+    const fnName = type === 'maia' ? 'generate-commercial-report' : 'generate-company-report';
+    const payload = type === 'maia'
+      ? { leads: leads, company: label, domain: 'all', eventConfig: evData }
+      : { leads: leads, company: label, domain: domain, eventConfig: evData };
+
+    const res = await fetch(`${BASE_URL}/.netlify/functions/${fnName}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const rawText = await res.text();
+    let data;
+    try { data = JSON.parse(rawText); } catch(_) { throw new Error('El servidor no respondió correctamente'); }
+    if (!data.success) throw new Error(data.error || 'Error generando reporte');
+
+    closeModal();
+    localStorage.setItem('report_reportHtml', data.reportHtml);
+    localStorage.setItem('report_respondent', JSON.stringify({ name: label||eventId, company: label||'', role:'', email:'' }));
+    localStorage.setItem('report_eventName', label || eventId);
+    window.open('/report/', '_blank');
+  } catch(err) {
+    closeModal();
+    showToast('❌ ' + (err.message || 'Error generando reporte'));
+  }
+}
+
+
 function closeModal() {
   const modal = document.getElementById("company-modal");
   if (modal) modal.style.display = "none";
