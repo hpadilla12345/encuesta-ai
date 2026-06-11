@@ -682,6 +682,61 @@ async function init() {
   }
 
   renderQuestions(eventConfig.questions || DEMO_CONFIG.questions);
+
+  // TEST MODE: auto-fill all answers if ?test=1
+  if (new URLSearchParams(location.search).get('test') === '1') {
+    setTimeout(() => autoFillTestData(), 400);
+  }
+}
+
+function autoFillTestData() {
+  // Fill contact form
+  const fields = {
+    'resp-name': 'Héctor Padilla',
+    'resp-email': 'hpadilla@scanda.com.mx',
+    'resp-company': 'Grupo Scanda',
+    'resp-role': 'CEO',
+    'resp-industry': 'Tecnología'
+  };
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) { el.value = val; el.dispatchEvent(new Event('input')); }
+  });
+
+  // Auto-select answers for each question
+  const qs = eventConfig.questions || [];
+  qs.forEach(q => {
+    if (q.type === 'scale') {
+      answers[q.id] = 3;
+      const btns = document.querySelectorAll('.scale-btn');
+      // Find the right scale for this question
+    } else if (q.type === 'single') {
+      const opts = q.options || [];
+      if (opts.length > 0) {
+        answers[q.id] = opts[0];
+        const btn = document.querySelector(`[onclick*="'${q.id}'"]`);
+        if (btn) btn.classList.add('option-btn-selected');
+      }
+    } else if (q.type === 'multi-open') {
+      const opts = (q.options || []).slice(0, q.maxSelections || 2);
+      answers[q.id] = {};
+      opts.forEach(o => { answers[q.id][o] = true; });
+    } else if (q.type === 'open' || q.type === 'text') {
+      answers[q.id] = 'Mejorar la toma de decisiones con datos en tiempo real';
+    }
+  });
+
+  // Show a test banner
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7c3aed;color:#fff;text-align:center;padding:8px;font-size:12px;font-family:monospace;z-index:999';
+  banner.textContent = '🧪 MODO TEST — Datos pre-llenados — Solo da clic en Generar mi reporte';
+  document.body.prepend(banner);
+
+  // Scroll to submit button
+  setTimeout(() => {
+    const btn = document.getElementById('submitBtn');
+    if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 500);
 }
 
 async function fetchFullConfigFromServer(slugOrId) {
