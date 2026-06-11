@@ -1267,9 +1267,20 @@ async function generateCompanyReport(domain) {
   if (companyLeads.length === 0) return;
 
   const company = companyLeads[0].respondent?.company || domain;
+  // Get eventId from leads filter (not from editor currentEventId)
   const eventId = document.getElementById('leadsEventFilter').value;
-  const evData = lsGetEvent(currentEventId);
-  if (!evData) { showToast('⚠️ No se encontró la configuración del evento'); return; }
+  if (!eventId) { showToast('⚠️ Selecciona un evento en el filtro'); return; }
+
+  // Try localStorage first, then fetch from GitHub
+  let evData = lsGetEvent(eventId);
+  if (!evData) {
+    try {
+      const evRes = await fetch(`${BASE_URL}/.netlify/functions/get-event?slug=${eventId}`);
+      const evJson = await evRes.json();
+      evData = evJson.event || evJson;
+    } catch(_) {}
+  }
+  if (!evData || !evData.eventId) { showToast('⚠️ No se encontró la configuración del evento'); return; }
 
   // Show loading modal
   showModal('🤖 Generando reporte consolidado...', `
