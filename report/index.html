@@ -132,6 +132,14 @@
 
   @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
   .layout { animation: fadeUp 0.5s ease both; }
+
+@media print {
+  .site-header, .success-banner, .action-btn, .cta-card { display: none !important; }
+  body { background: white !important; }
+  body::before { display: none !important; }
+  .report-content { box-shadow: none !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 </head>
 <body>
@@ -186,7 +194,10 @@
         📧 Reenviar a mi correo
       </button>
       <button class="action-btn btn-outline-sm" onclick="printReport()">
-        🖨️ Imprimir / Guardar PDF
+        🖨️ Imprimir / PDF
+      </button>
+      <button class="action-btn btn-outline-sm" onclick="downloadHTML()" style="background:rgba(95,168,255,.1);border-color:rgba(95,168,255,.3);color:#5fa8ff">
+        ⬇ Descargar HTML
       </button>
     </div>
     <div class="cta-card">
@@ -257,6 +268,41 @@ async function resendEmail() {
     btn.disabled = false;
     btn.innerHTML = '📧 Reenviar a mi correo';
   }
+}
+
+function downloadHTML() {
+  const reportHtml = sessionStorage.getItem('reportHtml');
+  const respondent = JSON.parse(sessionStorage.getItem('respondent') || '{}');
+  const eventName = sessionStorage.getItem('eventName') || 'AI Maturity Assessment';
+  if (!reportHtml) { alert('No hay reporte disponible'); return; }
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Maturity Assessment · ${respondent.company || 'Reporte'}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#f8fafc;padding:32px;max-width:720px;margin:0 auto}
+  @media print{body{padding:0;background:#fff}}
+</style>
+</head>
+<body>${reportHtml}</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = (respondent.company || 'reporte').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `AI-Assessment-${slug}-${date}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function printReport() {
