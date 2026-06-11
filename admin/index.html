@@ -429,7 +429,7 @@
         <div style="overflow-x:auto">
           <table class="leads-table">
             <thead><tr>
-              <th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Industria</th><th>Email</th><th>Fecha</th><th></th>
+              <th>Nombre</th><th>Empresa</th><th>Cargo</th><th>Industria</th><th>Email</th><th>Fecha y Hora</th><th></th>
             </tr></thead>
             <tbody id="leadsTableBody">
               <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:32px">Selecciona un evento para ver las respuestas</td></tr>
@@ -1563,7 +1563,7 @@ function exportLeads() {
   const qIds = Object.keys(questionMap);
   const qLabels = qIds.map(id => questionMap[id]);
 
-  const headers = ['Nombre','Empresa','Cargo','Industria','Email','Fecha', ...qLabels];
+  const headers = ['Nombre','Empresa','Cargo','Industria','Email','Fecha y Hora', ...qLabels];
   const rows = [headers];
 
   allLeads.forEach(l => {
