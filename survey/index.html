@@ -1133,9 +1133,9 @@ async function submitSurvey() {
     }).catch(console.error);
 
     // Redirect to report page with HTML encoded in sessionStorage
-    sessionStorage.setItem('reportHtml', data.reportHtml);
-    sessionStorage.setItem('respondent', JSON.stringify(respondent));
-    sessionStorage.setItem('eventName', eventConfig.eventName);
+    localStorage.setItem('report_reportHtml', data.reportHtml);
+    localStorage.setItem('report_respondent', JSON.stringify(respondent));
+    localStorage.setItem('report_eventName', eventConfig.eventName);
     window.location.href = '/report/';
 
   } catch (err) {
@@ -1151,9 +1151,9 @@ async function submitSurvey() {
           .filter(r => r.respondent?.email === respondent.email)
           .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
         if (myResponse?.reportHtml) {
-          sessionStorage.setItem('reportHtml', myResponse.reportHtml);
-          sessionStorage.setItem('respondent', JSON.stringify(respondent));
-          sessionStorage.setItem('eventName', eventConfig.eventName);
+          localStorage.setItem('report_reportHtml', myResponse.reportHtml);
+          localStorage.setItem('report_respondent', JSON.stringify(respondent));
+          localStorage.setItem('report_eventName', eventConfig.eventName);
           window.location.href = '/report/';
           return;
         }
