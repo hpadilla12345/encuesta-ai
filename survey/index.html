@@ -1051,9 +1051,28 @@ async function submitSurvey() {
     window.location.href = '/report/';
 
   } catch (err) {
+    // Report may have been generated even if response failed
+    // Try to fetch it from GitHub after a short wait
+    console.error('submitSurvey error:', err.message);
+    try {
+      await new Promise(r => setTimeout(r, 3000));
+      const pollRes = await fetch(`${BASE_URL}/.netlify/functions/list-responses?eventId=${eventConfig.eventId}`);
+      if (pollRes.ok) {
+        const pollData = await pollRes.json();
+        const myResponse = (pollData.responses || [])
+          .filter(r => r.respondent?.email === respondent.email)
+          .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+        if (myResponse?.reportHtml) {
+          sessionStorage.setItem('reportHtml', myResponse.reportHtml);
+          sessionStorage.setItem('respondent', JSON.stringify(respondent));
+          sessionStorage.setItem('eventName', eventConfig.eventName);
+          window.location.href = '/report/';
+          return;
+        }
+      }
+    } catch(_) {}
     hideLoading();
-    document.getElementById('questions-error').textContent = 'Ocurrió un error: ' + err.message + '. Por favor intenta de nuevo.';
-    document.getElementById('questions-error').classList.add('show');
+    showError(err.message || 'Ocurrió un error. Por favor intenta de nuevo.');
   }
 }
 
