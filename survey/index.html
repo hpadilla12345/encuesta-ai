@@ -1139,29 +1139,33 @@ async function submitSurvey() {
     window.location.href = '/report/';
 
   } catch (err) {
-    // Report may have been generated even if response failed
-    // Try to fetch it from GitHub after a short wait
+    // Function may still be running on server — poll GitHub up to 8 times every 5 seconds
     console.error('submitSurvey error:', err.message);
-    try {
-      await new Promise(r => setTimeout(r, 3000));
-      const pollRes = await fetch(`${BASE_URL}/.netlify/functions/list-responses?eventId=${eventConfig.eventId}&email=${encodeURIComponent(respondent.email)}`);
-      if (pollRes.ok) {
-        const pollData = await pollRes.json();
-        const myResponse = (pollData.responses || [])
-          .filter(r => r.respondent?.email === respondent.email)
-          .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
-        if (myResponse?.reportHtml) {
-          showLoading('✅ Reporte listo — abriendo...');
-          localStorage.setItem('report_reportHtml', myResponse.reportHtml);
-          localStorage.setItem('report_respondent', JSON.stringify(respondent));
-          localStorage.setItem('report_eventName', eventConfig.eventName);
-          window.location.href = '/report/';
-          return;
+    let found = false;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        await new Promise(r => setTimeout(r, 5000));
+        const pollRes = await fetch(`${BASE_URL}/.netlify/functions/list-responses?eventId=${eventConfig.eventId}&email=${encodeURIComponent(respondent.email)}`);
+        if (pollRes.ok) {
+          const pollData = await pollRes.json();
+          const myResponse = (pollData.responses || [])
+            .filter(r => r.respondent?.email === respondent.email)
+            .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+          if (myResponse?.reportHtml) {
+            localStorage.setItem('report_reportHtml', myResponse.reportHtml);
+            localStorage.setItem('report_respondent', JSON.stringify(respondent));
+            localStorage.setItem('report_eventName', eventConfig.eventName);
+            window.location.href = '/report/';
+            found = true;
+            break;
+          }
         }
-      }
-    } catch(_) {}
-    hideLoading();
-    showError('Tu reporte se está procesando. Si no abre automáticamente, revisa tu correo en 1-2 minutos o intenta de nuevo.');
+      } catch(_) {}
+    }
+    if (!found) {
+      hideLoading();
+      showError('Tu reporte se está procesando. Revisa tu correo en unos minutos o intenta de nuevo.');
+    }
   }
 }
 
