@@ -83,7 +83,7 @@ Genera el JSON con los valores de todas las variables.`;
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1200,
+      max_tokens: 2000,
       system: jsonPrompt,
       messages: [{ role:'user', content: userMessage }],
     });
