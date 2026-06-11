@@ -1297,61 +1297,7 @@ async function generateCompanyReport(domain) {
   `);
 
   try {
-    // Build consolidated answers (average scales, merge multi/open)
-    const questions = evData.questions || [];
-    const mergedAnswers = {};
-
-    questions.forEach(q => {
-      const allAns = companyLeads.map(l => l.answers?.[q.id]).filter(a => a !== undefined && a !== null);
-      if (allAns.length === 0) return;
-
-      if (q.type === 'scale') {
-        const nums = allAns.map(Number).filter(n => !isNaN(n));
-        if (nums.length) {
-          const avg = (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1);
-          const dist = nums.map(n => `${companyLeads[allAns.indexOf(allAns.find((_,i) => Number(allAns[i])===n))]?.respondent?.role||'?'}:${n}`).join(', ');
-          mergedAnswers[q.id] = `${avg} (promedio de ${nums.length} respuestas: ${nums.join(', ')})`;
-        }
-      } else if (q.type === 'multi-open') {
-        const merged = {};
-        allAns.forEach(a => {
-          if (typeof a === 'object') {
-            Object.entries(a).forEach(([k,v]) => { if (k!=='_open'&&v) merged[k]=(merged[k]||0)+1; });
-          }
-        });
-        const sorted = Object.entries(merged).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} (${v}/${allAns.length})`);
-        mergedAnswers[q.id] = sorted.join(' · ');
-      } else if (q.type === 'single') {
-        const counts = {};
-        allAns.forEach(a => { counts[a]=(counts[a]||0)+1; });
-        const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-        mergedAnswers[q.id] = sorted.map(([k,v])=>`${k}(${v})`).join(' · ');
-      } else if (q.type === 'open' || q.type === 'text') {
-        mergedAnswers[q.id] = allAns.map((a,i)=>`[${companyLeads[i]?.respondent?.role||'Resp.'+(i+1)}]: ${a}`).join(' | ');
-      }
-    });
-
-    // Build consolidated respondent
-    const roles = [...new Set(companyLeads.map(l=>l.respondent?.role).filter(Boolean))].join(', ');
-    const industry = companyLeads[0].respondent?.industry || '—';
-    const consolidatedRespondent = {
-      name: `Equipo directivo (${companyLeads.length} personas)`,
-      company: company,
-      role: roles,
-      email: companyLeads[0].respondent?.email || '',
-      industry: industry
-    };
-
-    // Inject multi-respondent context into system prompt
-    const multiPrompt = (evData.systemPrompt || '') +
-      `
-
-CONTEXTO MULTI-RESPONDENTE: Este reporte consolida las respuestas de ${companyLeads.length} personas de ${company}: ${roles}. 
-Cuando las respuestas difieran entre roles, señala las brechas de percepción — son insights valiosos. 
-Cuando coincidan, valídalos como consenso organizacional.
-Usa el promedio de scores para el cálculo del score global, pero menciona la distribución por rol cuando sea relevante.`;
-
-    // Use dedicated company report function (Apollocom style)
+      // Use dedicated company report function (Apollocom style)
     const res = await fetch(`${BASE_URL}/.netlify/functions/generate-company-report`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -1407,11 +1353,13 @@ function closeModal() {
 }
 
 function openSummary() {
-  const ev = lsGetEvent(currentEventId);
-  if (!ev) { showToast('⚠️', 'Selecciona un evento primero'); return; }
-  const slug = ev.slug || ev.eventId;
-  const url = `/summary/?evento=${slug}`;
-  window.open(url, '_blank');
+  // Use the leads filter event first, fallback to editor event
+  const filterId = document.getElementById('leadsEventFilter')?.value;
+  const evId = filterId || currentEventId;
+  if (!evId) { showToast('⚠️ Selecciona un evento primero'); return; }
+  const ev = lsGetEvent(evId);
+  const slug = ev?.slug || evId;
+  window.open(`/summary/?evento=${encodeURIComponent(slug)}`, '_blank');
 }
 
 function exportLeads() {
