@@ -1380,20 +1380,32 @@ async function processEventReports() {
     </div>`);
 
   try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/process-event-reports`, {
+    // Call background function — returns 202 immediately, processes in background
+    const res = await fetch(`${BASE_URL}/.netlify/functions/process-event-reports-background`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ eventId: evData.eventId, eventConfig: evData, adminPassword: adminPass })
     });
-    const rawText = await res.text();
-    let data; try { data = JSON.parse(rawText); } catch(_) { throw new Error('El servidor no respondió'); }
-    if (!data.success) throw new Error(data.error || 'Error procesando');
-    closeModal();
-    const { results } = data;
-    showToast(`✅ Procesado: MAIA ${results.maia?'✓':'✗'} · ${results.companies.length} empresas`);
+
+    // Background functions return 202 — that's success
+    if (res.status === 202 || res.ok) {
+      closeModal();
+      showModal('⚙️ Procesando en segundo plano', `
+        <div style="text-align:center;padding:28px">
+          <div style="font-size:36px;margin-bottom:12px">⏳</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">Los reportes se están generando</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+            Tardará 1-2 minutos. Cuando terminen, los botones<br>
+            <strong>🏢 Por Empresa</strong> y <strong>💼 Oportunidad MAIA</strong> estarán listos.
+          </div>
+          <button onclick="closeModal()" style="padding:9px 20px;background:#0b1a30;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px">Entendido</button>
+        </div>`);
+    } else {
+      throw new Error(`Error ${res.status}`);
+    }
   } catch(err) {
     closeModal();
-    showToast('❌ ' + (err.message || 'Error procesando'));
+    showToast('❌ ' + (err.message || 'Error al iniciar procesamiento'));
   }
 }
 
