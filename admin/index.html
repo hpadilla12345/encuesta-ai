@@ -1502,10 +1502,12 @@ async function runReport(type, domain, label, leads, evData) {
       "</div><script>function dl(){var b=new Blob([document.documentElement.outerHTML],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='reporte.html';a.click();}<\/script></body></html>";
 
     closeModal();
-    localStorage.setItem("report_reportHtml", reportHtml);
-    localStorage.setItem("report_respondent", JSON.stringify({ name: label, company: label, role: "", email: "" }));
-    localStorage.setItem("report_eventName", evData.eventName || label);
-    window.open("/report/", "_blank");
+    // Open as Blob URL — no localStorage issues, works with full HTML documents
+    var blob = new Blob([reportHtml], { type: "text/html;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    // Revoke after 60s
+    setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
 
   } catch(err) {
     closeModal();
