@@ -701,18 +701,27 @@ function renderQuestionInput(q) {
   const maxSel = q.maxSelections || 0;
   const counterId = `counter-${q.id}`;
   return `<div>
-    ${maxSel ? `<div id="${counterId}" style="font-size:12px;color:var(--accent);font-family:var(--mono);margin-bottom:10px;font-weight:600">0 / ${maxSel} seleccionados</div>` : ''}
-    <div class="q-options multi-opts" id="mo-${q.id}">
-      ${opts.map(opt => `
-        <div class="q-opt" onclick="selectMultiOpen('${q.id}','${opt.replace(/'/g,"\\'")}',this,${maxSel})">
-          <span class="opt-icon">☐</span> ${opt}
+    ${maxSel ? `
+    <div id="${counterId}" style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div style="display:flex;gap:4px">
+        ${Array.from({length:maxSel},(_,i)=>`<div id="dot-${q.id}-${i}" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:.2s"></div>`).join('')}
+      </div>
+      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)" id="txt-${counterId}">Selecciona ${maxSel}</span>
+    </div>` : ''}
+    <div style="display:flex;flex-direction:column;gap:8px" id="mo-${q.id}">
+      ${opts.map((opt,oi) => `
+        <div class="mc-card" id="mc-${q.id}-${oi}" onclick="selectMultiOpen('${q.id}','${opt.replace(/'/g,"\\'")}',this,${maxSel},'${q.id}-${oi}')">
+          <div class="mc-check" id="chk-${q.id}-${oi}">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="mc-label">${opt}</span>
         </div>`).join('')}
     </div>
-    <div style="margin-top:12px">
-      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Otro — especifica el tuyo:</label>
-      <input type="text" class="q-open-input" placeholder="Escribe aquí si no está en la lista..."
+    <div style="margin-top:14px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">¿Otro? Escribe el tuyo:</div>
+      <input type="text" class="q-open-input" placeholder="Especifica si no está en la lista..."
         oninput="updateOpenAnswer('${q.id}',this.value)"
-        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:.2s">
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:.2s">
     </div>
   </div>`;
 }
@@ -784,7 +793,7 @@ function selectOption(qid, value, btn, type) {
   }
 }
 
-function selectMultiOpen(qid, value, btn, maxSel) {
+function selectMultiOpen(qid, value, card, maxSel, cardId) {
   if (!answers[qid]) answers[qid] = {};
   if (typeof answers[qid] !== 'object') answers[qid] = {};
 
@@ -792,29 +801,45 @@ function selectMultiOpen(qid, value, btn, maxSel) {
   const isSelected = selected[value];
 
   if (isSelected) {
+    // Deselect
     delete selected[value];
-    btn.classList.remove('selected');
-    btn.querySelector('.opt-icon').textContent = '☐';
+    card.classList.remove('mc-selected');
   } else {
     const currentCount = Object.keys(selected).filter(k => k !== '_open').length;
     if (maxSel > 0 && currentCount >= maxSel) {
-      // Flash feedback
-      const counter = document.getElementById(`counter-${qid}`);
-      if (counter) { counter.style.color = 'var(--danger)'; setTimeout(() => counter.style.color = 'var(--accent)', 800); }
+      // Shake feedback — can't select more
+      card.style.animation = 'mcShake .3s ease';
+      setTimeout(() => card.style.animation = '', 300);
       return;
     }
     selected[value] = true;
-    btn.classList.add('selected');
-    btn.querySelector('.opt-icon').textContent = '☑';
+    card.classList.add('mc-selected');
   }
 
-  // Update counter
+  // Update dot indicators + text
   if (maxSel > 0) {
     const count = Object.keys(selected).filter(k => k !== '_open').length;
-    const counter = document.getElementById(`counter-${qid}`);
-    if (counter) {
-      counter.textContent = `${count} / ${maxSel} seleccionados`;
-      counter.style.color = count === maxSel ? 'var(--teal, #00d4a0)' : 'var(--accent)';
+    for (let i = 0; i < maxSel; i++) {
+      const dot = document.getElementById(`dot-${qid}-${i}`);
+      if (dot) dot.style.background = i < count ? 'var(--accent)' : 'var(--border)';
+    }
+    const txt = document.getElementById(`txt-counter-${qid}`);
+    if (txt) {
+      txt.textContent = count >= maxSel ? '✓ Listo' : `Selecciona ${maxSel - count} más`;
+      txt.style.color = count >= maxSel ? 'var(--accent)' : 'var(--muted)';
+    }
+    // Dim unavailable cards when max reached
+    const container = document.getElementById(`mo-${qid}`);
+    if (container) {
+      container.querySelectorAll('.mc-card').forEach(c => {
+        if (count >= maxSel && !c.classList.contains('mc-selected')) {
+          c.style.opacity = '0.4';
+          c.style.pointerEvents = 'none';
+        } else {
+          c.style.opacity = '';
+          c.style.pointerEvents = '';
+        }
+      });
     }
   }
 }
