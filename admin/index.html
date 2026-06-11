@@ -1351,17 +1351,15 @@ Cuando las respuestas difieran entre roles, señala las brechas de percepción �
 Cuando coincidan, valídalos como consenso organizacional.
 Usa el promedio de scores para el cálculo del score global, pero menciona la distribución por rol cuando sea relevante.`;
 
-    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
+    // Use dedicated company report function (Apollocom style)
+    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-company-report`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        answers: mergedAnswers,
-        respondent: consolidatedRespondent,
-        eventConfig: {
-          ...evData,
-          eventId: evData.eventId,
-          systemPrompt: multiPrompt
-        }
+        leads: companyLeads,
+        company,
+        domain,
+        eventConfig: evData
       })
     });
 
