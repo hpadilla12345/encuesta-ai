@@ -278,7 +278,7 @@
         "type": "multi-open",
         "required": true,
         "label": "¿Cuáles son los principales inhibidores para adoptar IA en tu organización?",
-        "sub": "Selecciona todos los que apliquen — puedes agregar uno propio al final",
+        "sub": "Selecciona tus 3 principales",
         "options": [
           "Falta de estrategia o visión clara desde dirección",
           "Calidad o disponibilidad de datos",
@@ -288,14 +288,15 @@
           "Resistencia cultural al cambio",
           "No sabemos por dónde empezar",
           "Preocupaciones de seguridad o regulación"
-        ]
+        ],
+        "maxSelections": 3
       },
       {
         "id": "qC2",
         "type": "multi-open",
         "required": true,
         "label": "¿Qué iniciativas de IA crees que debería tener tu empresa en los próximos 12 meses?",
-        "sub": "Selecciona todas las que apliquen — puedes agregar una propia",
+        "sub": "Selecciona las 3 más importantes",
         "options": [
           "Automatización de procesos operativos",
           "Análisis predictivo y toma de decisiones",
@@ -305,7 +306,8 @@
           "Agentes de IA para áreas específicas (finanzas, RH, operaciones)",
           "Estrategia y roadmap de IA corporativo",
           "Capacitación y cultura de IA en el equipo"
-        ]
+        ],
+        "maxSelections": 3
       },
       {
         "id": "qC3",
@@ -318,13 +320,15 @@
         "id": "qC4",
         "type": "single",
         "required": true,
-        "label": "¿Existe presupuesto para iniciativas de IA en los próximos 12 meses?",
+        "label": "¿Cuál es el rango de presupuesto que tu empresa podría destinar a iniciativas de IA en los próximos 12 meses?",
         "options": [
-          "Sí, está aprobado",
-          "Está en proceso de aprobación",
-          "Hay voluntad pero no está formalizado",
           "No hay presupuesto definido aún",
-          "No lo sé"
+          "Menos de $50,000 USD",
+          "$50,000 – $200,000 USD",
+          "$200,000 – $500,000 USD",
+          "$500,000 – $1,000,000 USD",
+          "Más de $1,000,000 USD",
+          "No lo sé / no tengo visibilidad"
         ]
       },
       {
