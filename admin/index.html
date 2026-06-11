@@ -1217,51 +1217,60 @@ async function deleteResponse(eventId, idx) {
   showToast('✅ Respuesta eliminada');
 }
 
-function openCompanyReport() {
-  if (!allLeads || allLeads.length === 0) {
-    showToast('⚠️ Carga primero los leads de un evento');
-    return;
+async function openCompanyReport() {
+  if (!allLeads || allLeads.length === 0) { showToast("⚠️ Carga primero los leads"); return; }
+  const eventId = document.getElementById("leadsEventFilter").value;
+  let evData = currentLeadsEvent || lsGetEvent(eventId);
+  if (!evData || !evData.eventId) {
+    try {
+      const r = await fetch(BASE_URL + "/.netlify/functions/list-events?adminPassword=" + encodeURIComponent(adminPass));
+      if (r.ok) { const d = await r.json(); evData = (d.events||[]).find(e=>e.eventId===eventId||e.slug===eventId); if(evData){currentLeadsEvent=evData;lsUpsertEvent(evData);} }
+    } catch(_) {}
   }
+  if (!evData || !evData.eventId) { showToast("⚠️ No se encontró config del evento"); return; }
+  window._leadsEvData = evData;
 
-  // Group by email domain
   const byDomain = {};
-  allLeads.forEach(lead => {
-    const email = lead.respondent?.email || '';
-    const domain = email.split('@')[1]?.toLowerCase() || 'sin-dominio';
-    if (!byDomain[domain]) byDomain[domain] = [];
-    byDomain[domain].push(lead);
+  allLeads.forEach(function(lead) {
+    var domain = (lead.respondent && lead.respondent.email ? lead.respondent.email : "").split("@")[1] || "";
+    domain = domain.toLowerCase();
+    if (domain && ["gmail.com","hotmail.com","yahoo.com","outlook.com"].indexOf(domain) === -1) {
+      if (!byDomain[domain]) byDomain[domain] = [];
+      byDomain[domain].push(lead);
+    }
   });
-
-  const domains = Object.entries(byDomain)
-    .filter(([d]) => d !== 'sin-dominio' && !['gmail.com','hotmail.com','yahoo.com','outlook.com'].includes(d))
-    .sort((a,b) => b[1].length - a[1].length);
-
-  if (domains.length === 0) {
-    showToast('No se encontraron dominios corporativos');
+  var domains = Object.entries(byDomain).sort(function(a,b){return b[1].length-a[1].length;});
+  if (!domains.length) { showToast("No se encontraron dominios corporativos"); return; }
+  if (domains.length === 1) {
+    var d0=domains[0]; closeModal();
+    runReport("company", d0[0], (d0[1][0]&&d0[1][0].respondent&&d0[1][0].respondent.company)||d0[0], d0[1], evData);
     return;
   }
 
-  // Build modal with company list
-  const listHtml = domains.map(([domain, leads]) => {
-    const companies = [...new Set(leads.map(l => l.respondent?.company).filter(Boolean))].join(', ');
-    const roles = leads.map(l => l.respondent?.role || '—').join(' · ');
-    return `<div onclick="generateCompanyReport('${domain}')" style="padding:14px 16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:8px;transition:.15s;background:var(--surface2)"
-      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">@${domain}</div>
-          <div style="font-size:11px;color:var(--muted)">${companies || domain} · ${leads.length} respondente${leads.length>1?'s':''}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${roles}</div>
-        </div>
-        <div style="font-size:22px;color:var(--accent);font-weight:800">${leads.length}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  showModal('🏢 Selecciona la empresa para el reporte consolidado',
-    `<p style="font-size:13px;color:var(--muted);margin-bottom:16px">Agrupadas por dominio corporativo del email. Haz clic para generar el reporte consolidado.</p>
-    ${listHtml}`
-  );
+  // Build modal — store domain index in data attr, click handler reads from domains array
+  window._companDomains = domains;
+  var listHtml = domains.map(function(entry, idx) {
+    var dom = entry[0]; var leads = entry[1];
+    var co = (leads[0]&&leads[0].respondent&&leads[0].respondent.company)||dom;
+    return "<div data-idx=\""+idx+"\" class=\"co-pick-item\" style=\"padding:13px 16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:8px;background:var(--surface2)\">" +
+      "<div style=\"display:flex;justify-content:space-between;align-items:center\">" +
+      "<div><div style=\"font-size:13px;font-weight:700;color:var(--text)\">"+co+"</div>" +
+      "<div style=\"font-size:11px;color:var(--muted)\">@"+dom+" · "+leads.length+" respondente"+(leads.length>1?"s":"")+"</div></div>" +
+      "<div style=\"font-size:18px\">🏢</div></div></div>";
+  }).join("");
+  showModal("🏢 Selecciona empresa",
+    "<p style=\"font-size:13px;color:var(--muted);margin-bottom:14px\">Haz clic para generar el reporte.</p>" + listHtml);
+  // Attach click handlers after modal is shown
+  setTimeout(function() {
+    document.querySelectorAll(".co-pick-item").forEach(function(el) {
+      el.addEventListener("click", function() {
+        var idx = parseInt(el.getAttribute("data-idx"));
+        var entry = window._companDomains[idx];
+        closeModal();
+        runReport("company", entry[0], (entry[1][0]&&entry[1][0].respondent&&entry[1][0].respondent.company)||entry[0], entry[1], window._leadsEvData);
+      });
+    });
+  }, 50);
 }
 
 async function generateCompanyReport(domain) {
@@ -1377,77 +1386,52 @@ function showModal(title, bodyHtml) {
 
 // ── OPEN COMMERCIAL REPORT ────────────────────────────────────────────────────
 async function openCommercialReport() {
-  if (!allLeads || allLeads.length === 0) { showToast('⚠️ Carga primero los leads del evento'); return; }
-  const eventId = document.getElementById('leadsEventFilter').value;
+  if (!allLeads || allLeads.length === 0) { showToast("⚠️ Carga primero los leads"); return; }
+  const eventId = document.getElementById("leadsEventFilter").value;
   let evData = currentLeadsEvent || lsGetEvent(eventId);
   if (!evData || !evData.eventId) {
     try {
-      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass)}`);
+      const r = await fetch(BASE_URL + "/.netlify/functions/list-events?adminPassword=" + encodeURIComponent(adminPass));
       if (r.ok) { const d = await r.json(); evData = (d.events||[]).find(e=>e.eventId===eventId||e.slug===eventId); if(evData){currentLeadsEvent=evData;lsUpsertEvent(evData);} }
     } catch(_) {}
   }
-  if (!evData || !evData.eventId) { showToast('⚠️ No se encontró config del evento'); return; }
-  await loadCachedReport(evData.eventId, 'maia', null, evData.eventName, allLeads, evData);
+  if (!evData || !evData.eventId) { showToast("⚠️ No se encontró config del evento"); return; }
+  runReport("maia", "all", evData.eventName || "Evento", allLeads, evData);
 }
 
-// ── LOAD CACHED OR GENERATE REPORT ───────────────────────────────────────────
-async function loadCachedReport(eventId, type, domain, label, leads, evData) {
-  // 1. Try cache first (instant)
+async function runReport(type, domain, label, leads, evData) {
+  var icon  = type === "maia" ? "💼" : "🏢";
+  var color = type === "maia" ? "#f59e0b" : "#818cf8";
+  var fnName = type === "maia" ? "generate-commercial-report" : "generate-company-report";
+  showModal(icon + " Generando reporte...",
+    "<div style=\"text-align:center;padding:28px\">" +
+    "<div style=\"font-size:36px;margin-bottom:12px\">"+icon+"</div>" +
+    "<div style=\"font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px\">"+label+"</div>" +
+    "<div style=\"font-size:13px;color:var(--muted);margin-bottom:16px\">Claude está generando el reporte (~20 seg)...</div>" +
+    "<div style=\"display:flex;justify-content:center;gap:6px\">" +
+    "<div style=\"width:8px;height:8px;border-radius:50%;background:"+color+";animation:pulse 1.2s ease infinite\"></div>" +
+    "<div style=\"width:8px;height:8px;border-radius:50%;background:"+color+";animation:pulse 1.2s ease infinite .2s\"></div>" +
+    "<div style=\"width:8px;height:8px;border-radius:50%;background:"+color+";animation:pulse 1.2s ease infinite .4s\"></div>" +
+    "</div></div>");
   try {
-    const params = new URLSearchParams({ eventId, type });
-    if (domain) params.append('domain', domain);
-    const cacheRes = await fetch(`${BASE_URL}/.netlify/functions/get-cached-report?${params}`);
-    if (cacheRes.ok) {
-      const cacheData = await cacheRes.json();
-      if (cacheData.found && cacheData.html) {
-        localStorage.setItem('report_reportHtml', cacheData.html);
-        localStorage.setItem('report_respondent', JSON.stringify({ name: label||eventId, company: label||'', role:'', email:'' }));
-        localStorage.setItem('report_eventName', label || eventId);
-        window.open('/report/', '_blank');
-        return;
-      }
-    }
-  } catch(_) {}
-
-  // 2. Not cached — generate with single Claude call
-  const color = type === 'maia' ? '#f59e0b' : '#818cf8';
-  const icon  = type === 'maia' ? '💼' : '🏢';
-  showModal(icon + ' Generando reporte...', '<div style="text-align:center;padding:28px">' +
-    '<div style="font-size:36px;margin-bottom:12px">' + icon + '</div>' +
-    '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">' + (label||'') + '</div>' +
-    '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Primera vez — generando reporte (~20 seg).<br>Se guardará en cache para la próxima vez.</div>' +
-    '<div style="display:flex;justify-content:center;gap:6px">' +
-      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';animation:pulse 1.2s ease infinite"></div>' +
-      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';animation:pulse 1.2s ease infinite .2s"></div>' +
-      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';animation:pulse 1.2s ease infinite .4s"></div>' +
-    '</div></div>');
-
-  try {
-    const fnName = type === 'maia' ? 'generate-commercial-report' : 'generate-company-report';
-    const payload = type === 'maia'
-      ? { leads: leads, company: label, domain: 'all', eventConfig: evData }
-      : { leads: leads, company: label, domain: domain, eventConfig: evData };
-
-    const res = await fetch(`${BASE_URL}/.netlify/functions/${fnName}`, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
+    var res = await fetch(BASE_URL + "/.netlify/functions/" + fnName, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ leads: leads, company: label, domain: domain, eventConfig: evData })
     });
-    const rawText = await res.text();
-    let data;
-    try { data = JSON.parse(rawText); } catch(_) { throw new Error('El servidor no respondió correctamente'); }
-    if (!data.success) throw new Error(data.error || 'Error generando reporte');
-
+    var txt = await res.text();
+    var data;
+    try { data = JSON.parse(txt); } catch(_) { throw new Error("Sin respuesta del servidor. Intenta de nuevo."); }
+    if (!data.success) throw new Error(data.error || "Error generando reporte");
     closeModal();
-    localStorage.setItem('report_reportHtml', data.reportHtml);
-    localStorage.setItem('report_respondent', JSON.stringify({ name: label||eventId, company: label||'', role:'', email:'' }));
-    localStorage.setItem('report_eventName', label || eventId);
-    window.open('/report/', '_blank');
+    localStorage.setItem("report_reportHtml", data.reportHtml);
+    localStorage.setItem("report_respondent", JSON.stringify({ name: label, company: label, role: "", email: "" }));
+    localStorage.setItem("report_eventName", evData.eventName || label);
+    window.open("/report/", "_blank");
   } catch(err) {
     closeModal();
-    showToast('❌ ' + (err.message || 'Error generando reporte'));
+    showToast("❌ " + err.message);
   }
 }
-
 
 function closeModal() {
   const modal = document.getElementById("company-modal");
