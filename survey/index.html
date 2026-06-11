@@ -696,7 +696,23 @@ function renderQuestionInput(q) {
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;box-sizing:border-box">
       </div>` : ''}`;
   }
-  if (q.type === 'multi') {
+  if (q.type === 'multi-open') {
+  const opts = q.options || [];
+  return `<div class="q-options multi-opts" id="mo-${q.id}">
+    ${opts.map(opt => `
+      <div class="q-opt" onclick="selectOption('${q.id}','${opt.replace(/'/g,"\\'")}',this,'multi')">
+        <span class="opt-check">☐</span> ${opt}
+      </div>`).join('')}
+    <div style="margin-top:10px">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Otro (especifica):</label>
+      <input type="text" class="q-open-input" placeholder="Escribe aquí tu respuesta..."
+        oninput="updateOpenAnswer('${q.id}',this.value)"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none">
+    </div>
+  </div>`;
+}
+
+if (q.type === 'multi') {
     const hasOtro = q.options.some(o => o === 'Otro' || o.startsWith('Otro'));
     return `<div class="options" id="opts_${q.id}">${q.options.map(opt => `
       <button class="option-btn" onclick="selectOption('${q.id}','${opt.replace(/'/g,"\\'")}',this,'multi')">
@@ -761,6 +777,12 @@ function selectOption(qid, value, btn, type) {
       answers[qid] = selected;
     }
   }
+}
+
+function updateOpenAnswer(qid, value) {
+  if (!answers[qid]) answers[qid] = {};
+  if (typeof answers[qid] !== 'object') answers[qid] = {};
+  answers[qid]._open = value;
 }
 
 function updateMultiOtro(qid, value) {
