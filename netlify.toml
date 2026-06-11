@@ -8,6 +8,15 @@
 [functions."generate-report"]
   timeout = 26
 
+[functions."generate-company-report"]
+  timeout = 26
+
+[functions."generate-commercial-report"]
+  timeout = 26
+
+[functions."process-event-reports"]
+  timeout = 26
+
 [[headers]]
   for = "/*"
   [headers.values]
