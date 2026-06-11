@@ -1373,9 +1373,9 @@ Usa el promedio de scores para el cálculo del score global, pero menciona la di
     closeModal();
 
     // Open report in new window
-    sessionStorage.setItem('reportHtml', data.reportHtml);
-    sessionStorage.setItem('respondent', JSON.stringify(consolidatedRespondent));
-    sessionStorage.setItem('eventName', evData.eventName || 'AI Maturity Assessment');
+    localStorage.setItem('report_reportHtml', data.reportHtml);
+    localStorage.setItem('report_respondent', JSON.stringify(consolidatedRespondent));
+    localStorage.setItem('report_eventName', evData.eventName || 'AI Maturity Assessment');
     window.open('/report/', '_blank');
 
   } catch(err) {
