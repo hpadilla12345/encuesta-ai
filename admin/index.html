@@ -1402,31 +1402,111 @@ async function openCommercialReport() {
 async function runReport(type, domain, label, leads, evData) {
   var icon  = type === "maia" ? "💼" : "🏢";
   var color = type === "maia" ? "#f59e0b" : "#818cf8";
-  var fnName = type === "maia" ? "generate-commercial-report" : "generate-company-report";
+
   showModal(icon + " Generando reporte...",
     "<div style=\"text-align:center;padding:28px\">" +
     "<div style=\"font-size:36px;margin-bottom:12px\">"+icon+"</div>" +
     "<div style=\"font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px\">"+label+"</div>" +
-    "<div style=\"font-size:13px;color:var(--muted);margin-bottom:16px\">Claude está generando el reporte (~20 seg)...</div>" +
+    "<div style=\"font-size:13px;color:var(--muted);margin-bottom:16px\">Claude está analizando las respuestas...</div>" +
     "<div style=\"display:flex;justify-content:center;gap:6px\">" +
     "<div style=\"width:8px;height:8px;border-radius:50%;background:"+color+";animation:pulse 1.2s ease infinite\"></div>" +
     "<div style=\"width:8px;height:8px;border-radius:50%;background:"+color+";animation:pulse 1.2s ease infinite .2s\"></div>" +
     "<div style=\"width:8px;height:8px;border-radius:50%;background:"+color+";animation:pulse 1.2s ease infinite .4s\"></div>" +
     "</div></div>");
+
   try {
-    var res = await fetch(BASE_URL + "/.netlify/functions/" + fnName, {
+    // Get API key from secure endpoint
+    var keyRes = await fetch(BASE_URL + "/.netlify/functions/get-api-key", {
       method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ leads: leads, company: label, domain: domain, eventConfig: evData })
+      body: JSON.stringify({ adminPassword: adminPass })
     });
-    var txt = await res.text();
-    var data;
-    try { data = JSON.parse(txt); } catch(_) { throw new Error("Sin respuesta del servidor. Intenta de nuevo."); }
-    if (!data.success) throw new Error(data.error || "Error generando reporte");
+    var keyData = await keyRes.json();
+    if (!keyData.key) throw new Error("No se pudo obtener la clave de API");
+
+    // Build prompt based on type
+    var qs = evData.questions || [];
+    var respondentText = leads.map(function(l) {
+      var r = l.respondent || {};
+      var lines2 = qs.map(function(q) {
+        var ans = l.answers && l.answers[q.id];
+        if (!ans && ans !== 0) return null;
+        var val = q.type === "scale" ? ans+"/5" :
+          (typeof ans === "object" && !Array.isArray(ans)) ?
+            Object.entries(ans).filter(function(e){return e[0]!=="_open"&&e[1];}).map(function(e){return e[0];}).join(" · ") :
+          Array.isArray(ans) ? ans.join(" · ") : String(ans);
+        return val ? "  "+q.label+": "+val : null;
+      }).filter(Boolean).join("\n");
+      return (r.name||"?")+"|"+(r.company||"?")+"|"+(r.role||"?")+"|"+(r.industry||"?")+"\n"+lines2;
+    }).join("\n\n---\n\n");
+
+    var systemPrompt = type === "maia"
+      ? "Eres consultor senior de Grupo Scanda. Analiza TODAS las respuestas del evento y genera reporte interno de oportunidades comerciales mapeadas al portafolio MAIA.\n\nPORTAFOLIO MAIA:\n1. IA VALUE DISCOVERY ($30-80K, 3-5 sem): diagnóstico, casos de uso priorizados\n2. DATA READY & BUSINESS INSIGHTS ($50-200K): integración datos, MDM, capa semántica\n3. CORPORATE AI ASSISTANTS ($40-150K): agentes IA, copilotos, automatización\n4. FACTORY DATA 360 ($8-25K/mes): digitalización planta, sensores\n5. FACTORY INSIGHTS 360 ($15-40K/mes): consultoría continua de planta\n6. GEMELOS DIGITALES ($80-250K): réplica digital de planta\n\nGENERA HTML con: Resumen ejecutivo | Score calificación del evento | Oportunidades por empresa (dolor → oferta MAIA → inversión → prioridad) | Secuencia de seguimiento | Potencial de cartera total. Solo HTML directo."
+      : "Eres consultor senior de Scanda preparando reporte por empresa para Workshop de Discovery. Analiza las respuestas del grupo y genera HTML con: Resumen ejecutivo | Dolores más repetidos (con citas y frecuencia) | Dónde hay consenso | Dónde hay disparidad | Casos de uso sugeridos (top 3 con ROI) | Recomendación para el Workshop. Solo HTML directo.";
+
+    var userMsg = "Empresa/Evento: "+label+"\nRespondentes: "+leads.length+"\n\n"+respondentText;
+
+    // Call Anthropic API directly from browser — no Netlify timeout
+    var apiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": keyData.key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMsg }]
+      })
+    });
+    var apiData = await apiRes.json();
+    if (!apiData.content || !apiData.content[0]) throw new Error("Error en la API de Claude");
+
+    var aiHtml = apiData.content[0].text.replace(/^```html?\s*/i,"").replace(/```\s*$/i,"").trim();
+
+    // Wrap in full HTML
+    var now = new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"long",year:"numeric"});
+    var bgColor = type === "maia" ? "#fbbf24" : "#818cf8";
+    var titleText = type === "maia" ? "Oportunidades MAIA · "+label : "Reporte por Empresa · "+label;
+    var warn = type === "maia" ? "<div style=\"margin-bottom:10px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);border-radius:4px;padding:4px 12px;display:inline-block;color:#fbbf24;font-family:monospace;font-size:11px\">🔒 USO INTERNO — NO COMPARTIR</div>" : "";
+    var reportHtml = "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"+
+      "<title>"+titleText+"</title>"+
+      "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=DM+Mono:wght@400;500&display=swap\" rel=\"stylesheet\">"+
+      "<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#f0f4f8;color:#1a2332;padding:32px 16px}"+
+      ".page{max-width:760px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1)}"+
+      ".hdr{background:linear-gradient(135deg,#0b1a30,#1a3a6b);padding:28px 36px;color:#fff}"+
+      ".hdr-ey{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:"+bgColor+";margin-bottom:6px}"+
+      ".hdr h1{font-size:20px;font-weight:800;margin-bottom:4px}.hdr-sub{font-size:12px;opacity:.6}"+
+      ".content{padding:8px 36px 28px}"+
+      ".comm-section,.cr-section{padding:18px 0;border-bottom:1px solid #f1f5f9}.comm-section:last-child,.cr-section:last-child{border-bottom:none}"+
+      ".comm-section h2,.cr-section h2{font-size:16px;font-weight:800;color:#0b1a30;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}"+
+      ".comm-section p,.comm-section li,.cr-section p,.cr-section li{font-size:14px;line-height:1.8;color:#374151}"+
+      ".comm-section table,.cr-section table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}"+
+      ".comm-section th,.cr-section th{background:#0b1a30;color:#fff;padding:8px 12px;text-align:left;font-size:11px}"+
+      ".comm-section td,.cr-section td{padding:9px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}"+
+      ".comm-section ul,.cr-section ul{padding-left:20px;margin-top:6px}"+
+      ".comm-next{background:#f0f4ff!important;border-radius:8px;padding:14px!important}"+
+      ".cr-recommendation{background:#f0f4ff;border-radius:8px;padding:14px}"+
+      ".abar{padding:14px 36px;display:flex;justify-content:flex-end;gap:10px;border-top:2px solid "+bgColor+"}"+
+      ".abtn{padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;border:1px solid}"+
+      ".abtn-dl{background:rgba(0,151,255,.08);color:#0597ff;border-color:rgba(0,151,255,.3)}"+
+      ".abtn-pr{background:#0b1a30;color:#fff;border-color:#0b1a30}"+
+      "@media print{.abar{display:none}body{background:#fff;padding:0}.page{border-radius:0;box-shadow:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}"+
+      "</style></head><body><div class=\"page\">"+
+      "<div class=\"hdr\"><div class=\"hdr-ey\">MAIA by Grupo Scanda · "+titleText+"</div>"+warn+
+      "<h1>"+label+"</h1><div class=\"hdr-sub\">"+now+" · "+leads.length+" respondente"+(leads.length!==1?"s":"")+"</div></div>"+
+      "<div class=\"content\">"+aiHtml+"</div>"+
+      "<div class=\"abar\"><button class=\"abtn abtn-dl\" onclick=\"dl()\">⬇ Descargar</button><button class=\"abtn abtn-pr\" onclick=\"window.print()\">🖨 Imprimir</button></div>"+
+      "</div><script>function dl(){var b=new Blob([document.documentElement.outerHTML],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='reporte.html';a.click();}<\/script></body></html>";
+
     closeModal();
-    localStorage.setItem("report_reportHtml", data.reportHtml);
+    localStorage.setItem("report_reportHtml", reportHtml);
     localStorage.setItem("report_respondent", JSON.stringify({ name: label, company: label, role: "", email: "" }));
     localStorage.setItem("report_eventName", evData.eventName || label);
     window.open("/report/", "_blank");
+
   } catch(err) {
     closeModal();
     showToast("❌ " + err.message);
