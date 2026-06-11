@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reporte — Grupo Scanda</title>
+</head>
+<body>
+<script>
+var html = localStorage.getItem('_pendingReport');
+if (html) {
+  localStorage.removeItem('_pendingReport');
+  document.open();
+  document.write(html);
+  document.close();
+} else {
+  document.write('<div style="font-family:sans-serif;padding:40px;color:#374151"><h2>No hay reporte disponible</h2><p style="margin-top:8px;color:#64748b">Genera un reporte desde el administrador primero.</p><a href="/admin/" style="display:inline-block;margin-top:16px;padding:8px 18px;background:#0b1a30;color:#fff;border-radius:6px;text-decoration:none;font-size:13px">← Volver al admin</a></div>');
+}
+</script>
+</body>
+</html>
