@@ -1485,24 +1485,61 @@ function confirmResetResponses(eventId, name) {
   loadEvents(); // refresh counts
 }
 
-function cloneEvent(eventId) {
-  const ev = lsGetEvent(eventId);
-  if (!ev) { showToast('Evento no encontrado'); return; }
+async function cloneEvent(eventId) {
+  // Get event from localStorage or GitHub
+  let ev = lsGetEvent(eventId);
+  if (!ev) {
+    try {
+      const r = await fetch(`${BASE_URL}/.netlify/functions/get-event?slug=${encodeURIComponent(eventId)}`);
+      const d = await r.json();
+      ev = d.event || d;
+    } catch(_) {}
+  }
+  if (!ev || !ev.eventId) { showToast('⚠️ Evento no encontrado'); return; }
+
+  // Ask for new name
+  const newName = prompt('Nombre para el nuevo evento (copia):', ev.eventName + ' — Copia');
+  if (!newName) return;
+
+  // Generate slug from name
+  const baseSlug = newName.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const newSlug = baseSlug + '-' + Date.now().toString(36);
+
   const cloned = {
     ...ev,
-    eventId: null,
-    eventName: ev.eventName + ' (copia)',
-    slug: ev.slug + '-copia',
+    eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+    eventName: newName,
+    slug: newSlug,
     active: false,
+    ccAdmin: ev.ccAdmin || false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  cloned.eventId = `evt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-  lsUpsertEvent(cloned);
-  showToast('⧉ Evento clonado — puedes editarlo ahora');
-  loadEvents();
-  // Open the clone for editing
-  setTimeout(() => editEvent(cloned.eventId), 300);
+
+  // Save to GitHub via save-event
+  showToast('⏳ Creando copia...');
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/save-event`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ event: cloned, adminPassword })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Error guardando');
+
+    lsUpsertEvent(cloned);
+    showToast('✅ Evento duplicado — abriendo para editar');
+    await loadEvents();
+    setTimeout(() => editEvent(cloned.eventId), 400);
+  } catch(err) {
+    // Fallback: save locally only
+    lsUpsertEvent(cloned);
+    showToast('⚠️ Guardado localmente — haz clic en Guardar para persistir en GitHub');
+    await loadEvents();
+    setTimeout(() => editEvent(cloned.eventId), 400);
+  }
 }
 
 
