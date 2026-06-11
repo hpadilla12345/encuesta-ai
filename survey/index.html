@@ -1053,7 +1053,6 @@ function updateProgress() {
 
 // ── SUBMIT ────────────────────────────────────────────────────
 async function submitSurvey() {
-  // Validate required questions
   const questions = eventConfig.questions || DEMO_CONFIG.questions;
   const unanswered = questions.filter(q => {
     if (!q.required) return false;
@@ -1062,111 +1061,74 @@ async function submitSurvey() {
     if (Array.isArray(ans) && ans.length === 0) return true;
     return false;
   });
-
   if (unanswered.length > 0) {
-    document.getElementById('questions-error').textContent = `Por favor responde: ${unanswered.map(q => q.label.slice(0,40)+'...').join(' · ')}`;
+    document.getElementById('questions-error').textContent = `Por favor responde: ${unanswered.map(q => q.label.slice(0,40)).join(', ')}`;
     document.getElementById('questions-error').classList.add('show');
     return;
   }
   document.getElementById('questions-error').classList.remove('show');
 
-  // Show loading
-  showLoading();
+  const configToSend = {
+    eventId:        eventConfig.eventId || 'demo',
+    eventName:      eventConfig.eventName,
+    questions:      questions,
+    systemPrompt:   eventConfig.systemPrompt   || DEMO_CONFIG.systemPrompt,
+    reportTemplate: eventConfig.reportTemplate || DEMO_CONFIG.reportTemplate,
+    ctaUrl:         eventConfig.ctaUrl,
+    ctaText:        eventConfig.ctaText,
+  };
 
-  // Progress animation
-  animateLoadingSteps();
-
-  try {
-    // Use full demo config for server call (server will look up actual config)
-    const configToSend = {
-      eventId: eventConfig.eventId || 'demo',
-      eventName: eventConfig.eventName,
-      questions: questions,
-      systemPrompt: eventConfig.systemPrompt || DEMO_CONFIG.systemPrompt,
-      reportTemplate: eventConfig.reportTemplate || DEMO_CONFIG.reportTemplate,
-    };
-
-    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
-    });
-
-    const rawText = await res.text();
-    let data;
+  // Fire-and-forget — server generates + emails the report
+  fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
+  }).then(async res => {
+    // If server responds fast, open report directly
     try {
-      data = JSON.parse(rawText);
-    } catch(_) {
-      console.error('Non-JSON response:', rawText.slice(0,300));
-      throw new Error('El servidor no respondió correctamente. Por favor intenta de nuevo en unos segundos.');
-    }
-    if (!data.success) throw new Error(data.error || 'Error generando reporte');
-
-    // Save response to localStorage (keyed by eventId)
-    try {
-      const storageKey = 'survey_responses';
-      const all = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      const evId = eventConfig.eventId || 'demo';
-      if (!all[evId]) all[evId] = [];
-      all[evId].push({
-        respondent,
-        answers,
-        eventId: evId,
-        eventName: eventConfig.eventName,
-        timestamp: new Date().toISOString(),
-      });
-      localStorage.setItem(storageKey, JSON.stringify(all));
+      const data = await res.json();
+      if (data.success && data.reportHtml) {
+        localStorage.setItem('report_reportHtml', data.reportHtml);
+        localStorage.setItem('report_respondent', JSON.stringify(respondent));
+        localStorage.setItem('report_eventName', eventConfig.eventName);
+        window.location.href = '/report/';
+      }
     } catch(_) {}
+  }).catch(() => {});
 
-    // Send email (non-blocking)
-    fetch(`${BASE_URL}/.netlify/functions/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: respondent.email,
-        name: respondent.name,
-        company: respondent.company,
-        eventName: eventConfig.eventName,
-        reportHtml: data.reportHtml,
-        ccAdmin: true,
-      }),
-    }).catch(console.error);
+  // Show success immediately — don't wait for server
+  showSuccessScreen(respondent.email);
+}
 
-    // Redirect to report page with HTML encoded in sessionStorage
-    localStorage.setItem('report_reportHtml', data.reportHtml);
-    localStorage.setItem('report_respondent', JSON.stringify(respondent));
-    localStorage.setItem('report_eventName', eventConfig.eventName);
-    window.location.href = '/report/';
+function showSuccessScreen(email) {
+  // Hide questionnaire, show success message
+  const wrap = document.getElementById('questions-wrap') || document.querySelector('main') || document.body;
+  const hero = document.getElementById('hero-section');
+  if (hero) hero.style.display = 'none';
 
-  } catch (err) {
-    // Function may still be running on server — poll GitHub up to 8 times every 5 seconds
-    console.error('submitSurvey error:', err.message);
-    let found = false;
-    for (let attempt = 0; attempt < 8; attempt++) {
-      try {
-        await new Promise(r => setTimeout(r, 5000));
-        const pollRes = await fetch(`${BASE_URL}/.netlify/functions/list-responses?eventId=${eventConfig.eventId}&email=${encodeURIComponent(respondent.email)}`);
-        if (pollRes.ok) {
-          const pollData = await pollRes.json();
-          const myResponse = (pollData.responses || [])
-            .filter(r => r.respondent?.email === respondent.email)
-            .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
-          if (myResponse?.reportHtml) {
-            localStorage.setItem('report_reportHtml', myResponse.reportHtml);
-            localStorage.setItem('report_respondent', JSON.stringify(respondent));
-            localStorage.setItem('report_eventName', eventConfig.eventName);
-            window.location.href = '/report/';
-            found = true;
-            break;
-          }
-        }
-      } catch(_) {}
-    }
-    if (!found) {
-      hideLoading();
-      showError('Tu reporte se está procesando. Revisa tu correo en unos minutos o intenta de nuevo.');
-    }
-  }
+  // Replace page content with success card
+  document.body.innerHTML = `
+    <div style="min-height:100vh;background:#050d1a;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif">
+      <div style="background:#0b1a30;border:1px solid #1e3a5f;border-radius:16px;max-width:480px;width:100%;padding:40px;text-align:center">
+        <div style="font-size:48px;margin-bottom:20px">✅</div>
+        <h1 style="color:#fff;font-size:22px;font-weight:800;margin-bottom:10px">¡Listo!</h1>
+        <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin-bottom:6px">
+          Tu reporte personalizado de madurez en IA está siendo generado.
+        </p>
+        <p style="color:#0edda9;font-size:15px;font-weight:600;margin-bottom:24px">
+          Lo recibirás en <strong style="color:#fff">${email}</strong> en los próximos minutos.
+        </p>
+        <div style="background:#050d1a;border-radius:10px;padding:16px;margin-bottom:24px">
+          <p style="color:#64748b;font-size:13px;line-height:1.6">
+            💡 Revisa tu bandeja de entrada y tu carpeta de spam.
+            El reporte incluye tu score Gartner, brechas críticas y plan de acción.
+          </p>
+        </div>
+        <a href="/" style="display:inline-block;background:linear-gradient(135deg,#00c2a8,#0097ff);color:#000;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none">
+          Volver al inicio
+        </a>
+      </div>
+    </div>`;
 }
 
 function showLoading() {
