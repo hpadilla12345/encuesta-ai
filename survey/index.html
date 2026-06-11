@@ -657,7 +657,13 @@ async function fetchFullConfigFromServer(slugOrId) {
   try {
     const res = await fetch(`${BASE_URL}/.netlify/functions/get-event?slug=${encodeURIComponent(slugOrId)}`);
     if (res.ok) {
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch(_) {
+        throw new Error('El servidor tardó demasiado o no está disponible. Por favor intenta de nuevo en unos segundos.');
+      }
       if (data.success && data.event) {
         eventConfig = data.event;
         return;
