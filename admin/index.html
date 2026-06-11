@@ -422,7 +422,8 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="exportLeads()">⬇ Exportar XLSX</button>
             <button class="btn btn-secondary btn-sm" onclick="openSummary()" style="background:rgba(0,212,160,.1);border-color:rgba(0,212,160,.3);color:var(--accent)">📊 Ver Resumen</button>
-            <button class="btn btn-secondary btn-sm" onclick="openCompanyReport()" style="background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.35);color:#818cf8" id="companyReportBtn" title="Genera reporte consolidado agrupando respondentes del mismo dominio de email">🏢 Reporte por Empresa</button>
+            <button class="btn btn-secondary btn-sm" onclick="openCompanyReport()" style="background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.35);color:#818cf8" title="Reporte ejecutivo por empresa (estilo Apollocom)">🏢 Reporte por Empresa</button>
+            <button class="btn btn-secondary btn-sm" onclick="openCommercialReport()" style="background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.35);color:#f59e0b" title="Análisis interno: oportunidades mapeadas a oferta MAIA">💼 Oportunidad MAIA</button>
           </div>
         </div>
         <div style="overflow-x:auto">
@@ -1336,6 +1337,109 @@ async function generateCompanyReport(domain) {
     // Open report in new window
     localStorage.setItem('report_reportHtml', data.reportHtml);
     localStorage.setItem('report_respondent', JSON.stringify(consolidatedRespondent));
+    localStorage.setItem('report_eventName', evData.eventName || 'AI Maturity Assessment');
+    window.open('/report/', '_blank');
+
+  } catch(err) {
+    closeModal();
+    showToast('❌ ' + (err.message || 'Error generando reporte'));
+  }
+}
+
+async function openCommercialReport() {
+  if (!allLeads || allLeads.length === 0) {
+    showToast('⚠️ Carga primero los leads de un evento');
+    return;
+  }
+
+  // Group by domain (same logic as company report)
+  const byDomain = {};
+  allLeads.forEach(lead => {
+    const email = lead.respondent?.email || '';
+    const domain = email.split('@')[1]?.toLowerCase() || 'sin-dominio';
+    if (!byDomain[domain]) byDomain[domain] = [];
+    byDomain[domain].push(lead);
+  });
+
+  const domains = Object.entries(byDomain)
+    .filter(([d]) => d !== 'sin-dominio' && !['gmail.com','hotmail.com','yahoo.com','outlook.com'].includes(d))
+    .sort((a,b) => b[1].length - a[1].length);
+
+  // If only one domain, go directly
+  if (domains.length === 0) { showToast('No se encontraron dominios corporativos'); return; }
+  if (domains.length === 1) { await generateCommercialReport(domains[0][0]); return; }
+
+  // Show domain selector
+  const listHtml = domains.map(([domain, leads]) => {
+    const companies = [...new Set(leads.map(l => l.respondent?.company).filter(Boolean))].join(', ');
+    return `<div onclick="closeModal();generateCommercialReport('${domain}')"
+      style="padding:14px 16px;border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:8px;background:var(--surface2);transition:.15s"
+      onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">@${domain}</div>
+          <div style="font-size:11px;color:var(--muted)">${companies} · ${leads.length} respondente${leads.length>1?'s':''}</div>
+        </div>
+        <div style="font-size:20px">💼</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  showModal('💼 Generar Oportunidad MAIA — Selecciona empresa',
+    `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">Análisis interno de oportunidad comercial mapeada al portafolio MAIA.</p>${listHtml}`);
+}
+
+async function generateCommercialReport(domain) {
+  closeModal();
+
+  const companyLeads = allLeads.filter(l => {
+    const email = l.respondent?.email || '';
+    return email.split('@')[1]?.toLowerCase() === domain;
+  });
+  if (!companyLeads.length) return;
+
+  const company = companyLeads[0].respondent?.company || domain;
+
+  // Get event config
+  const eventId = document.getElementById('leadsEventFilter').value;
+  let evData = lsGetEvent(eventId);
+  if (!evData || !evData.eventId) {
+    try {
+      const r = await fetch(`${BASE_URL}/.netlify/functions/list-events?adminPassword=${encodeURIComponent(adminPass || '')}`);
+      if (r.ok) {
+        const d = await r.json();
+        evData = (d.events || []).find(e => e.eventId === eventId || e.slug === eventId);
+      }
+    } catch(_) {}
+  }
+  if (!evData || !evData.eventId) { showToast('⚠️ No se encontró configuración del evento'); return; }
+
+  showModal('💼 Generando Oportunidad MAIA...', `
+    <div style="text-align:center;padding:32px">
+      <div style="font-size:40px;margin-bottom:14px">💼</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">${company}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Claude está mapeando oportunidades al portafolio MAIA...</div>
+      <div style="display:flex;justify-content:center;gap:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 1.2s ease infinite"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 1.2s ease infinite .2s"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 1.2s ease infinite .4s"></div>
+      </div>
+    </div>`);
+
+  try {
+    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-commercial-report`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ leads: companyLeads, company, domain, eventConfig: evData })
+    });
+    const rawText = await res.text();
+    let data;
+    try { data = JSON.parse(rawText); } catch(_) { throw new Error('El servidor no respondió correctamente'); }
+    if (!data.success) throw new Error(data.error || 'Error generando reporte');
+
+    closeModal();
+    localStorage.setItem('report_reportHtml', data.reportHtml);
+    localStorage.setItem('report_respondent', JSON.stringify({ name: company, company, role: 'Equipo directivo', email: '' }));
     localStorage.setItem('report_eventName', evData.eventName || 'AI Maturity Assessment');
     window.open('/report/', '_blank');
 
