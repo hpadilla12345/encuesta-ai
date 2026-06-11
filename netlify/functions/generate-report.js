@@ -1,6 +1,18 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const gh = require('./gh-storage');
 
+const DIMS = [
+  { id:'qB1', label:'Estrategia de IA' },
+  { id:'qB2', label:'Valor e Iniciativas' },
+  { id:'qB3', label:'Organización' },
+  { id:'qB4', label:'Personas y Cultura' },
+  { id:'qB5', label:'Gobernanza' },
+  { id:'qB6', label:'Ingeniería y Sistemas' },
+  { id:'qB7', label:'Datos' },
+];
+const NIVELES = ['','Inicial','Experimentación','Estabilización','Escalamiento','Liderazgo'];
+const DIM_COLORS = { 1:'#ef4444', 2:'#f59e0b', 3:'#0d9488', 4:'#059669', 5:'#0597ff' };
+
 function formatAnswer(ans, qType) {
   if (ans === null || ans === undefined) return 'No respondida';
   if (qType === 'scale') return `${ans}/5`;
@@ -22,7 +34,7 @@ exports.handler = async (event) => {
     const { answers, respondent, eventConfig } = JSON.parse(event.body);
     let { questions, eventName, eventId } = eventConfig;
 
-    // Always fetch fresh template + prompt from GitHub
+    // Fetch fresh config from GitHub
     let systemPrompt = null, reportTemplate = null;
     try {
       const owner = process.env.GITHUB_REPO_OWNER || 'hpadilla12345';
@@ -44,90 +56,142 @@ exports.handler = async (event) => {
       }
     } catch(ghErr) { console.log('GitHub fallback:', ghErr.message); }
 
-    if (!systemPrompt)   systemPrompt   = eventConfig.systemPrompt   || 'Eres consultor senior de IA del CoE de Grupo Scanda.';
-    if (!reportTemplate) reportTemplate = eventConfig.reportTemplate || '<div style="padding:32px;font-family:Arial"><h2>Score: {{SCORE_GARTNER}}/5.0 · {{NIVEL_GARTNER}}</h2><p>{{ANALISIS_POSICION}}</p><p>{{BRECHAS}}</p><p>{{INICIATIVAS}}</p></div>';
+    if (!systemPrompt)   systemPrompt   = eventConfig.systemPrompt   || 'Eres consultor senior del CoE-IA de Grupo Scanda.';
+    if (!reportTemplate) reportTemplate = eventConfig.reportTemplate || '<div style="padding:32px"><h2>{{SCORE_GARTNER}}/5 · {{NIVEL_GARTNER}}</h2><p>{{ANALISIS_POSICION}}</p></div>';
 
-    // Build answers summary
-    const answersText = (questions || []).map(q => {
+    // ── SERVER-SIDE: calculate scores from scale answers (no Claude needed) ─
+    const scores = {};
+    DIMS.forEach(d => { scores[d.id] = Number(answers[d.id]) || 0; });
+    const validScores = DIMS.map(d => scores[d.id]).filter(s => s > 0);
+    const avg = validScores.length ? validScores.reduce((a,b)=>a+b,0)/validScores.length : 2;
+    const scoreGlobal = Math.round(((avg - 1) / 4) * 100);
+    const nivelGartner = avg < 2 ? NIVELES[1] : avg < 3 ? NIVELES[2] : avg < 4 ? NIVELES[3] : avg < 5 ? NIVELES[4] : NIVELES[5];
+    const scoreGartnerStr = avg.toFixed(1);
+
+    // Generate dimension bars HTML server-side
+    const dimensionBars = DIMS.map(d => {
+      const val = scores[d.id] || 0;
+      const color = DIM_COLORS[val] || '#94a3b8';
+      const pct = val * 20;
+      return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${d.label}</span><span style="color:${color};font-weight:700">${val}/5</span></div><div style="background:#e2e8f0;border-radius:999px;height:7px"><div style="width:${pct}%;height:100%;border-radius:999px;background:${color}"></div></div></div>`;
+    }).join('');
+
+    // Sorted by score for brechas (lowest 3)
+    const sortedDims = DIMS.map(d => ({ ...d, score: scores[d.id] || 0 })).sort((a,b) => a.score - b.score);
+    const brechas3 = sortedDims.slice(0, 3);
+    const dimsText = DIMS.map(d => `${d.label}: ${scores[d.id]||0}/5`).join(', ');
+
+    // Non-scale answers
+    const answersText = (questions || []).filter(q => q.type !== 'scale').map(q => {
       const fmt = formatAnswer(answers[q.id], q.type);
       return `${q.label}: ${fmt}`;
     }).join('\n');
 
-    // Ask Claude ONLY for variable values (JSON) — fast, ~800 tokens output
-    const jsonPrompt = systemPrompt + '\n\nResponde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto extra) con estas claves:\n' +
-      '{"SCORE":"[entero 0-100]","SCORE_GARTNER":"[X.X]","NIVEL_GARTNER":"[nivel en español]",' +
-      '"DIMENSIONES_BARRAS":"[HTML con 7 barras, una por dimensión en español, usa colores: 1=#ef4444, 2=#f59e0b, 3=#0d9488, 4=#059669, 5=#0597ff]",' +
-      '"ANALISIS_POSICION":"[4-5 oraciones ejecutivas en texto plano]",' +
-      '"BENCHMARK":"[3 oraciones comparando con industria real del respondente en texto plano]",' +
-      '"BRECHAS":"[HTML: 3 items con clase brecha-item, cada uno con icono, titulo con score, descripcion con componente CoE que resuelve]",' +
-      '"INDUSTRIA_IA":"[HTML: bloque Track A con 3-4 casos de su industria + bloque Track B con 2 casos, con resultados en %]",' +
-      '"INICIATIVAS":"[HTML: 3 iniciativas con titulo, descripcion 2 lineas, chips de ROI/plazo/patron CoE]",' +
-      '"RUTA_COE":"[HTML: 3 pasos secuenciales hacia el CoE segun nivel de madurez del respondente]",' +
-      '"CTA_URL":"' + (eventConfig.ctaUrl || 'https://gruposcanda.com/discovery') + '",' +
-      '"CTA_TEXT":"' + (eventConfig.ctaText || 'AGENDA TU AI DISCOVERY →') + '"}';
+    // CTA
+    const ctaUrl  = eventConfig.ctaUrl  || 'https://gruposcanda.com/discovery';
+    const ctaText = eventConfig.ctaText || 'AGENDA TU AI DISCOVERY →';
 
-    const userMessage = `Respondente:
-- Nombre: ${respondent.name}
-- Empresa: ${respondent.company}
-- Cargo: ${respondent.role}
-- Email: ${respondent.email}
-- Industria: ${respondent.industry || '—'}
-
-Evento: ${eventName}
-
-RESPUESTAS:
-${answersText}
-
-Genera el JSON con los valores de todas las variables.`;
-
+    // ── CLAUDE: only text analysis (~500 tokens output) ──────────────────────
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const message = await client.messages.create({
+    const msg = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: jsonPrompt,
-      messages: [{ role:'user', content: userMessage }],
+      max_tokens: 900,
+      system: systemPrompt + '\n\nResponde SOLO con texto plano separado por marcadores. Sin HTML. Sin markdown.',
+      messages: [{
+        role: 'user',
+        content: `Respondente: ${respondent.name} | ${respondent.company} | ${respondent.role} | ${respondent.industry || '—'}
+Score Gartner: ${scoreGartnerStr}/5 · ${nivelGartner} · ${scoreGlobal}/100
+Dimensiones: ${dimsText}
+Brechas críticas (más bajas): ${brechas3.map(d=>`${d.label} ${d.score}/5`).join(', ')}
+Datos adicionales: ${answersText}
+
+Genera texto para estas 5 secciones separadas por ===:
+1. ANÁLISIS (4 oraciones: posición actual, fortalezas, brechas, oportunidad)
+===
+2. BENCHMARK (2 oraciones: comparación vs ${respondent.industry || 'su industria'} en LATAM con cifras reales)
+===
+3. BRECHAS (para cada una de las 3 dimensiones más bajas: nombre + 2 oraciones sobre impacto operativo y componente CoE que la resuelve)
+===
+4. INDUSTRIA_IA (3 casos Track A reales de su industria con resultado en %, luego 2 casos Track B transformacionales)
+===
+5. INICIATIVAS (3 iniciativas concretas: nombre + descripción 2 líneas + ROI estimado + plazo + patrón CoE)`
+      }],
     });
 
-    // Parse JSON response
-    let raw = message.content[0].text.trim();
-    raw = raw.replace(/^```json?\s*/i,'').replace(/```\s*$/i,'').trim();
-    let vars;
-    try { vars = JSON.parse(raw); }
-    catch(e) {
-      // Extract JSON object even if there's extra text
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) vars = JSON.parse(match[0]);
-      else throw new Error('No se pudo parsear la respuesta de Claude: ' + raw.slice(0,200));
-    }
+    const parts = msg.content[0].text.split('===').map(s => s.trim());
+    const analisis    = parts[0] || '';
+    const benchmark   = parts[1] || '';
+    const brechasText = parts[2] || '';
+    const industriaText = parts[3] || '';
+    const iniciativasText = parts[4] || '';
 
-    // Fill template with variable values
+    // ── Build HTML sections server-side ──────────────────────────────────────
+    // Brechas
+    const brechasHtml = brechas3.map((d, i) => {
+      const lines = brechasText.split('\n').filter(Boolean);
+      const start = lines.findIndex(l => l.includes(d.label));
+      const text = start >= 0 ? lines.slice(start, start+3).join(' ') : `${d.label} (${d.score}/5): brecha identificada.`;
+      const icons = ['🏛️','🗄️','🏢','👥','⚙️','📊','🔒'];
+      const coeMap = { 'qB5':'CoE Componente 06 (Gobernanza)', 'qB7':'CoE Componente 05 (AI Data)', 'qB3':'CoE Fase 01 Champions', 'qB4':'CoE Programa Champions', 'qB1':'CoE Discovery', 'qB2':'CoE Discovery (PoV)', 'qB6':'CoE Fase 03 Construcción' };
+      return `<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f1f5f9"><div style="width:36px;height:36px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${icons[i]||'⚠️'}</div><div><div style="font-size:13px;font-weight:700;color:#0b1a30;margin-bottom:4px">${d.label} <span style="font-family:monospace;font-size:10px;padding:2px 7px;border-radius:4px;background:#fee2e2;color:#dc2626">${d.score}/5</span> <span style="font-family:monospace;font-size:10px;padding:2px 7px;border-radius:4px;background:#dbeafe;color:#1e40af">${coeMap[d.id]||'CoE'}</span></div><div style="font-size:13px;color:#6b7280;line-height:1.6">${text.replace(d.label,'').replace(/^\s*[:\-]\s*/,'')}</div></div></div>`;
+    }).join('');
+
+    // Industria IA (Track A / Track B)
+    const [trackAText, trackBText] = industriaText.split(/Track B/i);
+    const industria = `<div style="margin-bottom:16px"><div style="font-size:11px;font-family:monospace;font-weight:700;color:#0b1a30;background:#0b1a30;color:#a7f3d0;padding:3px 10px;border-radius:4px;display:inline-block;margin-bottom:8px">Track A · IA Aumentada</div><p style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-line">${(trackAText||industriaText).trim()}</p></div><div><div style="font-size:11px;font-family:monospace;font-weight:700;background:#4338ca;color:#e0e7ff;padding:3px 10px;border-radius:4px;display:inline-block;margin-bottom:8px">Track B · IA Nativa</div><p style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-line">${(trackBText||'').trim()}</p></div>`;
+
+    // Iniciativas
+    const iniLines = iniciativasText.split(/\n(?=\d\.|\d\))/);
+    const iniciativasHtml = iniLines.slice(0,3).map((item, i) => {
+      const lines2 = item.trim().split('\n');
+      const title = lines2[0].replace(/^\d[\.\)]\s*/,'').trim();
+      const desc = lines2.slice(1).join(' ').trim();
+      return `<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f1f5f9"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0d9488,#0597ff);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0">${i+1}</div><div><div style="font-size:14px;font-weight:700;color:#0b1a30;margin-bottom:4px">${title}</div><div style="font-size:13px;color:#6b7280;line-height:1.6">${desc}</div></div></div>`;
+    }).join('');
+
+    // Ruta CoE steps based on level
+    const rutaSteps = avg < 2.5
+      ? [['Fase 01 · Discovery','Workshop Ejecutivo de Discovery (2-3h)','Mapeo de dolores, matriz impacto/complejidad, roadmap Q1-Q4. Entregable: heat map de madurez + business case.'],
+         ['Fase 01 + Componentes 05 & 06','Champions + Gobernanza + Data Foundation','Formación de AI Champions, políticas de IA (ISO 42001) y Data Pipeline. Cierra las brechas antes de construir.'],
+         ['Fases 02-03 · Diseño & Construcción','Blueprint + Primer proyecto Track A','Con PoV aprobado, construye la primera iniciativa en Stage-Gate CMMI L3 con valor medido.']]
+      : avg < 3.5
+      ? [['Fase 01 · Discovery','Workshop Ejecutivo + Proof of Value','Prioriza los 2-3 casos de uso con mayor ROI y valida factibilidad técnica. Tu nivel permite arrancar rápido.'],
+         ['Fase 02 · Diseño','Blueprint de arquitectura hub-and-spoke','Define los patrones técnicos (P1-P7) y el modelo operativo para escalar. Includes componentes 05 y 06.'],
+         ['Fase 03 · Construcción','Fábrica de IA - Stage-Gate CMMI L3','Construye y despliega iniciativas con pruebas T1-T6 y loops de mejora continua.']]
+      : [['Fase 03 · Construcción avanzada','Escalar iniciativas existentes con MLOps','Tu madurez permite ir directo a construcción. Define el portafolio de agentes y escala con gobernanza.'],
+         ['Fase 04 · Operación','MLOps + Loop anual de madurez','Implementa monitoreo de modelos, detección de drift y el ciclo de mejora continua del CoE.'],
+         ['Siguiente nivel · IA Nativa','Track B: reimaginar procesos clave con IA','Con Track A estable, diseña 1-2 procesos Track B que diferencien tu organización en el mercado.']];
+
+    const rutaHtml = rutaSteps.map((step, i) => `<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #e0e7ff"><div style="min-width:34px;height:34px;border-radius:50%;background:#3730a3;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">${i+1}</div><div><div style="font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.06em;color:#6366f1;margin-bottom:3px">${step[0]}</div><div style="font-size:13px;font-weight:700;color:#1e1b4b;margin-bottom:3px">${step[1]}</div><div style="font-size:12px;color:#4338ca;line-height:1.5">${step[2]}</div></div></div>`).join('');
+
+    // Fill template
+    const vars = {
+      NOMBRE: respondent.name, EMPRESA: respondent.company, CARGO: respondent.role,
+      SCORE: String(scoreGlobal), SCORE_GARTNER: scoreGartnerStr, NIVEL_GARTNER: nivelGartner,
+      DIMENSIONES_BARRAS: dimensionBars,
+      ANALISIS_POSICION: analisis,
+      BENCHMARK: benchmark,
+      BRECHAS: brechasHtml,
+      INDUSTRIA_IA: industria,
+      INICIATIVAS: iniciativasHtml,
+      RUTA_COE: rutaHtml,
+      CTA_URL: ctaUrl, CTA_TEXT: ctaText,
+    };
+
     let reportHtml = reportTemplate;
-    Object.entries(vars).forEach(([key, val]) => {
-      reportHtml = reportHtml.split(`{{${key}}}`).join(val || '');
+    Object.entries(vars).forEach(([k,v]) => {
+      reportHtml = reportHtml.split(`{{${k}}}`).join(v || '');
     });
-    // Also fill respondent variables
-    reportHtml = reportHtml.split('{{NOMBRE}}').join(respondent.name || '');
-    reportHtml = reportHtml.split('{{EMPRESA}}').join(respondent.company || '');
-    reportHtml = reportHtml.split('{{CARGO}}').join(respondent.role || '');
 
     // Save to GitHub
     const responseData = { respondent, answers, eventId, eventName, reportHtml, timestamp: new Date().toISOString() };
-    try { await gh.saveResponse(eventId, responseData); } catch(ghErr) { console.log('Save failed:', ghErr.message); }
+    try { await gh.saveResponse(eventId, responseData); } catch(e) { console.log('Save failed:', e.message); }
 
-    // Send email directly from server — always complete HTML, not affected by browser timeout
-    const resendEmail = eventConfig.ctaUrl || null;
+    // Send email server-side
     fetch(`${process.env.URL || 'https://encuesta-ia.netlify.app'}/.netlify/functions/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: respondent.email,
-        name: respondent.name,
-        company: respondent.company,
-        eventName,
-        reportHtml,
-        ccAdmin: true,
-      }),
-    }).catch(e => console.log('Email send failed (non-fatal):', e.message));
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ to:respondent.email, name:respondent.name, company:respondent.company, eventName, reportHtml, ccAdmin:true }),
+    }).catch(e => console.log('Email failed:', e.message));
 
     return {
       statusCode: 200,
@@ -137,11 +201,7 @@ Genera el JSON con los valores de todas las variables.`;
 
   } catch(err) {
     console.error('generate-report error:', err);
-    return {
-      statusCode: 500,
-      headers: { ...cors, 'Content-Type':'application/json' },
-      body: JSON.stringify({ success:false, error: err.message || 'Error generando reporte' }),
-    };
+    return { statusCode:500, headers:cors, body: JSON.stringify({ success:false, error:err.message }) };
   }
 };
 
