@@ -143,34 +143,6 @@
     "ccAdmin": true,
     "questions": [
       {
-        "id": "q1781152866020",
-        "type": "single",
-        "label": "¿Cuál es tu rol en la organización o a que área perteneces?",
-        "required": true,
-        "options": [
-          "CEO/Dirección General",
-          "CFO/Dirección Finanzas ",
-          "COO/Dirección Operaciones",
-          "CHRO/Dirección RH ",
-          "Otro"
-        ]
-      },
-      {
-        "id": "q1781152990670",
-        "type": "single",
-        "label": "¿De qué industria es tu empresa?",
-        "required": true,
-        "options": [
-          "Manufactura",
-          "Retail / consumo",
-          "Servicios Financieros",
-          "Salud / Farma",
-          "Logística",
-          "Energía",
-          "Otro"
-        ]
-      },
-      {
         "id": "q1781153096171",
         "type": "single",
         "label": "¿Cuántas personas trabajan en tu empresa?",
