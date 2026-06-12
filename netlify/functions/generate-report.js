@@ -57,7 +57,7 @@ exports.handler = async (event) => {
     } catch(ghErr) { console.log('GitHub fallback:', ghErr.message); }
 
     if (!systemPrompt)   systemPrompt   = eventConfig.systemPrompt   || 'Eres consultor senior del CoE-IA de Grupo Scanda.';
-    if (!reportTemplate) reportTemplate = eventConfig.reportTemplate || '<div style="padding:32px"><h2>{{SCORE_GARTNER}}/5 · {{NIVEL_GARTNER}}</h2><p>{{ANALISIS_POSICION}}</p></div>';
+    if (!reportTemplate) reportTemplate = eventConfig.reportTemplate || '<div style="padding:32px"><h2>{{SCORE_MADUREZ}}/5 · {{NIVEL_GARTNER}}</h2><p>{{ANALISIS_POSICION}}</p></div>';
 
     // ── SERVER-SIDE: calculate scores from scale answers (no Claude needed) ─
     const scores = {};
@@ -65,8 +65,8 @@ exports.handler = async (event) => {
     const validScores = DIMS.map(d => scores[d.id]).filter(s => s > 0);
     const avg = validScores.length ? validScores.reduce((a,b)=>a+b,0)/validScores.length : 2;
     const scoreGlobal = Math.round(((avg - 1) / 4) * 100);
-    const nivelGartner = avg < 2 ? NIVELES[1] : avg < 3 ? NIVELES[2] : avg < 4 ? NIVELES[3] : avg < 5 ? NIVELES[4] : NIVELES[5];
-    const scoreGartnerStr = avg.toFixed(1);
+    const nivelMadurez IA = avg < 2 ? NIVELES[1] : avg < 3 ? NIVELES[2] : avg < 4 ? NIVELES[3] : avg < 5 ? NIVELES[4] : NIVELES[5];
+    const scoreMadurez IAStr = avg.toFixed(1);
 
     // Generate dimension bars HTML server-side
     const dimensionBars = DIMS.map(d => {
@@ -100,7 +100,7 @@ exports.handler = async (event) => {
       messages: [{
         role: 'user',
         content: `Respondente: ${respondent.name} | ${respondent.company} | ${respondent.role} | ${respondent.industry || '—'}
-Score Gartner: ${scoreGartnerStr}/5 · ${nivelGartner} · ${scoreGlobal}/100
+Score de Madurez: ${scoreMadurez IAStr}/5 · ${nivelMadurez IA} · ${scoreGlobal}/100
 Dimensiones: ${dimsText}
 Brechas críticas (más bajas): ${brechas3.map(d=>`${d.label} ${d.score}/5`).join(', ')}
 Datos adicionales: ${answersText}
@@ -173,7 +173,7 @@ Genera texto para estas 5 secciones separadas por ===:
     // Fill template
     const vars = {
       NOMBRE: respondent.name, EMPRESA: respondent.company, CARGO: respondent.role,
-      SCORE: String(scoreGlobal), SCORE_GARTNER: scoreGartnerStr, NIVEL_GARTNER: nivelGartner,
+      SCORE: String(scoreGlobal), SCORE_MADUREZ: scoreMadurez IAStr, NIVEL_GARTNER: nivelMadurez IA,
       DIMENSIONES_BARRAS: dimensionBars,
       ANALISIS_POSICION: analisis,
       BENCHMARK: benchmark,
