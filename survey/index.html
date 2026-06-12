@@ -1053,67 +1053,54 @@ function updateProgress() {
 
 // ── SUBMIT ────────────────────────────────────────────────────
 async function submitSurvey() {
-  const questions = eventConfig.questions || DEMO_CONFIG.questions;
+  try {
+    const name    = (document.getElementById('f-name')?.value    || '').trim();
+    const email   = (document.getElementById('f-email')?.value   || '').trim();
+    const company = (document.getElementById('f-company')?.value || '').trim();
+    const role    = (document.getElementById('f-role')?.value    || '').trim();
+    const industry= (document.getElementById('f-industry')?.value|| '').trim();
 
-  // Build respondent from form fields
-  const name     = (document.getElementById('f-name')?.value     || '').trim();
-  const email    = (document.getElementById('f-email')?.value    || '').trim();
-  const company  = (document.getElementById('f-company')?.value  || '').trim();
-  const role     = (document.getElementById('f-role')?.value     || '').trim();
-  const industry = (document.getElementById('f-industry')?.value || '').trim();
+    if (!name || !email) {
+      alert('Por favor ingresa tu nombre y correo.');
+      return;
+    }
 
-  if (!name || !email || !company) {
-    document.getElementById('questions-error').textContent = 'Por favor completa todos los campos de contacto.';
-    document.getElementById('questions-error').classList.add('show');
-    return;
+    respondent = { name, email, company, role, industry };
+
+    // Show confirmation immediately
+    showEmailConfirm(email);
+
+    // Fire generation in background
+    const configToSend = {
+      eventId:        eventConfig.eventId        || 'demo',
+      eventName:      eventConfig.eventName       || 'AI Assessment',
+      questions:      eventConfig.questions       || [],
+      systemPrompt:   eventConfig.systemPrompt   || '',
+      reportTemplate: eventConfig.reportTemplate || '',
+      ctaUrl:         eventConfig.ctaUrl,
+      ctaText:        eventConfig.ctaText,
+    };
+
+    fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
+    }).then(async res => {
+      try {
+        const data = await res.json();
+        if (data.success && data.reportHtml) {
+          localStorage.setItem('report_reportHtml', data.reportHtml);
+          localStorage.setItem('report_respondent', JSON.stringify(respondent));
+          localStorage.setItem('report_eventName', eventConfig.eventName);
+          window.open('/report/', '_blank');
+        }
+      } catch(_) {}
+    }).catch(() => {});
+
+  } catch(e) {
+    console.error('submitSurvey error:', e);
+    alert('Ocurrió un error. Por favor intenta de nuevo.');
   }
-  respondent = { name, email, company, role, industry };
-
-  const unanswered = questions.filter(q => {
-    if (!q.required) return false;
-    const ans = answers[q.id];
-    if (ans === undefined || ans === null || ans === '') return true;
-    if (typeof ans === 'object' && !Array.isArray(ans) && Object.keys(ans).filter(k=>k!=='_open'&&ans[k]).length===0) return true;
-    if (Array.isArray(ans) && ans.length === 0) return true;
-    return false;
-  });
-  if (unanswered.length > 0) {
-    document.getElementById('questions-error').textContent = 'Por favor responde todas las preguntas requeridas.';
-    document.getElementById('questions-error').classList.add('show');
-    return;
-  }
-  document.getElementById('questions-error').classList.remove('show');
-
-  // Show confirmation immediately — user does NOT wait
-  showEmailConfirm(email);
-
-  // Fire generation in background
-  const configToSend = {
-    eventId:        eventConfig.eventId || 'demo',
-    eventName:      eventConfig.eventName,
-    questions:      questions,
-    systemPrompt:   eventConfig.systemPrompt   || DEMO_CONFIG.systemPrompt,
-    reportTemplate: eventConfig.reportTemplate || DEMO_CONFIG.reportTemplate,
-    ctaUrl:         eventConfig.ctaUrl,
-    ctaText:        eventConfig.ctaText,
-  };
-
-  fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
-  }).then(async res => {
-    try {
-      const data = await res.json();
-      if (data.success && data.reportHtml) {
-        localStorage.setItem('report_reportHtml', data.reportHtml);
-        localStorage.setItem('report_respondent', JSON.stringify(respondent));
-        localStorage.setItem('report_eventName', eventConfig.eventName);
-        // Open report in background tab (bonus — user already saw confirmation)
-        window.open('/report/', '_blank');
-      }
-    } catch(_) {}
-  }).catch(() => {});
 }
 
 function showLoading() {
