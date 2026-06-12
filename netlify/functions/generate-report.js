@@ -196,18 +196,58 @@ Genera texto para estas 5 secciones separadas por ===:
     const responseData = { respondent, answers, eventId, eventName, reportHtml, timestamp: new Date().toISOString() };
     try { await gh.saveResponse(eventId, responseData); } catch(e) { console.log('Save failed:', e.message); }
 
-    // Send email directly via Resend API
+    // Send short notification email — report link instead of embedded HTML
+    const reportUrl = `https://encuesta-ia.netlify.app/view-report/?id=${encodeURIComponent(respondent.email)}&event=${eventId}`;
+    const scoreVal  = vars.SCORE || '—';
+    const nivelVal  = vars.NIVEL_GARTNER || '—';
+    const shortEmail = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tu Reporte de Madurez en IA</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:Inter,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:32px 16px">
+<tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#0b1a30,#1a3a6b);padding:32px 40px;text-align:center">
+    <div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#a7f3d0;margin-bottom:8px">AI Maturity Assessment · Grupo Scanda</div>
+    <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 6px">Tu Diagnóstico de Madurez en IA está listo</h1>
+    <p style="color:rgba(255,255,255,.65);font-size:13px;margin:0">${respondent.name} · ${respondent.company}</p>
+  </td></tr>
+  <tr><td style="padding:32px 40px;text-align:center">
+    <div style="display:inline-block;background:#f0fdf9;border:2px solid #a7f3d0;border-radius:12px;padding:20px 40px;margin-bottom:24px">
+      <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#0d9488;margin-bottom:4px">Score Global</div>
+      <div style="font-size:56px;font-weight:900;color:#0b1a30;line-height:1">${scoreVal}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:4px">de 100 · Nivel: ${nivelVal}</div>
+    </div>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 28px">
+      Hemos generado tu reporte personalizado con análisis de brechas, casos de uso de tu industria y un plan de acción concreto para el CoE-IA.
+    </p>
+    <a href="${reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#0d9488,#0597ff);color:#fff;font-weight:700;font-size:15px;padding:14px 36px;border-radius:8px;text-decoration:none;letter-spacing:.02em">
+      Ver mi reporte completo →
+    </a>
+    <p style="color:#94a3b8;font-size:11px;margin:20px 0 0">El enlace es personal y estará disponible por 30 días.</p>
+  </td></tr>
+  <tr><td style="background:#f8fafc;padding:16px 40px;text-align:center;border-top:1px solid #e2e8f0">
+    <p style="color:#94a3b8;font-size:11px;margin:0">© Grupo Scanda · Centro de Excelencia de IA</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
+
     try {
-      const emailBody = JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || 'ai@encuestas.hpm.one',
-        to: [respondent.email],
-        subject: 'Tu Reporte de Madurez IA · ' + eventName,
-        html: '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' + reportHtml + '</body></html>',
-      });
       const emailRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-        body: emailBody,
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM_EMAIL || 'ai@encuestas.hpm.one',
+          reply_to: 'hola@gruposcanda.com',
+          to: [respondent.email],
+          subject: `Tu Diagnóstico de Madurez en IA está listo · Score ${scoreVal}/100`,
+          html: shortEmail,
+          headers: { 'List-Unsubscribe': '<mailto:hola@gruposcanda.com?subject=unsubscribe>' },
+        }),
       });
       const emailData = await emailRes.json();
       if (emailRes.ok) { console.log('Email sent OK:', emailData.id, '->', respondent.email); }
