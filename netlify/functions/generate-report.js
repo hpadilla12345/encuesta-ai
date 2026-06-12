@@ -193,12 +193,23 @@ Genera texto para estas 5 secciones separadas por ===:
     const responseData = { respondent, answers, eventId, eventName, reportHtml, timestamp: new Date().toISOString() };
     try { await gh.saveResponse(eventId, responseData); } catch(e) { console.log('Save failed:', e.message); }
 
-    // Send email server-side
-    fetch(`${process.env.URL || 'https://encuesta-ia.netlify.app'}/.netlify/functions/send-email`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ to:respondent.email, name:respondent.name, company:respondent.company, eventName, reportHtml, ccAdmin:true }),
-    }).catch(e => console.log('Email failed:', e.message));
-
+    // Send email directly via Resend API
+    try {
+      const emailBody = JSON.stringify({
+        from: process.env.RESEND_FROM_EMAIL || 'ai@encuestas.hpm.one',
+        to: [respondent.email],
+        subject: 'Tu Reporte de Madurez IA · ' + eventName,
+        html: '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' + reportHtml + '</body></html>',
+      });
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+        body: emailBody,
+      });
+      const emailData = await emailRes.json();
+      if (emailRes.ok) { console.log('Email sent OK:', emailData.id, '->', respondent.email); }
+      else { console.error('Resend error:', JSON.stringify(emailData)); }
+    } catch(emailErr) { console.error('Email exception:', emailErr.message); }
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type':'application/json' },
