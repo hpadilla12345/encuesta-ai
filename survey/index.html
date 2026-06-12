@@ -1136,6 +1136,19 @@ function animateLoadingSteps() {
 
 // ── START ─────────────────────────────────────────────────────
 init();
+
+function showEmailConfirm(email) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:#050d1a;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,sans-serif';
+  overlay.innerHTML = '<div style="background:#0b1a30;border:1px solid #1e3a5f;border-radius:16px;max-width:480px;width:100%;padding:40px;text-align:center">'
+    + '<div style="font-size:48px;margin-bottom:20px">✅</div>'
+    + '<h2 style="color:#fff;font-size:20px;font-weight:800;margin-bottom:10px">¡Listo! Tu reporte está en camino</h2>'
+    + '<p style="color:#94a3b8;font-size:14px;line-height:1.7;margin-bottom:8px">Tu diagnóstico personalizado de madurez en IA está siendo generado.</p>'
+    + '<p style="color:#0edda9;font-size:15px;font-weight:600;margin-bottom:24px">Lo recibirás en <strong style="color:#fff">' + email + '</strong> en los próximos minutos.</p>'
+    + '<p style="color:#64748b;font-size:12px">Revisa también tu carpeta de spam.</p>'
+    + '</div>';
+  document.body.appendChild(overlay);
+}
 </script>
 </body>
 </html>
