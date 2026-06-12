@@ -528,7 +528,7 @@ const DEMO_CONFIG = {
     },
     {
       id: 'q2', type: 'single', required: true,
-      label: '¿En qué etapa de madurez digital se encuentra tu empresa? (Framework Gartner)',
+      label: '¿En qué etapa de madurez digital se encuentra tu empresa? (Modelo de Madurez en IA)',
       sub: 'Independiente = sin integración digital · Agéntico = IA autónoma tomando decisiones',
       options: [
         'Independiente — sistemas y maquinaria aislados, datos en papel o silos',
@@ -603,7 +603,7 @@ const DEMO_CONFIG = {
 El reporte debe:
 1. Calcular un SCORE DE MADUREZ IA entre 0 y 100, considerando: etapa actual (25%), barreras identificadas (15%), áreas de iniciativas (20%), urgencia competitiva (20%), formalidad de estrategia (10%), presupuesto disponible (10%).
 2. Clasificar al respondente en uno de 4 tiers: Observador (0-25), Explorador (26-50), Adoptador (51-75), Líder (76-100).
-3. Comparar con benchmarks de Gartner/McKinsey para LATAM en su industria.
+3. Comparar con benchmarks de Madurez IA/McKinsey para LATAM en su industria.
 4. Recomendar las 3 iniciativas de IA más relevantes para su perfil.
 5. Incluir un CTA claro para agendar una sesión de AI Discovery con Grupo Scanda.
 
@@ -1067,10 +1067,8 @@ async function submitSurvey() {
     document.getElementById('questions-error').classList.add('show');
     return;
   }
-
   respondent = { name, email, company, role, industry };
 
-  // Validate required questions
   const unanswered = questions.filter(q => {
     if (!q.required) return false;
     const ans = answers[q.id];
@@ -1085,8 +1083,11 @@ async function submitSurvey() {
     return;
   }
   document.getElementById('questions-error').classList.remove('show');
-  showLoading();
 
+  // Show confirmation immediately — user does NOT wait
+  showEmailConfirm(email);
+
+  // Fire generation in background
   const configToSend = {
     eventId:        eventConfig.eventId || 'demo',
     eventName:      eventConfig.eventName,
@@ -1097,28 +1098,22 @@ async function submitSurvey() {
     ctaText:        eventConfig.ctaText,
   };
 
-  try {
-    const res = await fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
-    });
-    const rawText = await res.text();
-    let data;
-    try { data = JSON.parse(rawText); } catch(_) { data = { success: false }; }
-
-    if (data.success && data.reportHtml) {
-      localStorage.setItem('report_reportHtml', data.reportHtml);
-      localStorage.setItem('report_respondent', JSON.stringify(respondent));
-      localStorage.setItem('report_eventName', eventConfig.eventName);
-      window.location.href = '/report/';
-    } else {
-      showEmailConfirm(respondent.email);
-    }
-  } catch(err) {
-    console.error('submitSurvey:', err.message);
-    showEmailConfirm(respondent.email);
-  }
+  fetch(`${BASE_URL}/.netlify/functions/generate-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers, respondent, eventConfig: configToSend }),
+  }).then(async res => {
+    try {
+      const data = await res.json();
+      if (data.success && data.reportHtml) {
+        localStorage.setItem('report_reportHtml', data.reportHtml);
+        localStorage.setItem('report_respondent', JSON.stringify(respondent));
+        localStorage.setItem('report_eventName', eventConfig.eventName);
+        // Open report in background tab (bonus — user already saw confirmation)
+        window.open('/report/', '_blank');
+      }
+    } catch(_) {}
+  }).catch(() => {});
 }
 
 function showLoading() {
