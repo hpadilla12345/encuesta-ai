@@ -1054,6 +1054,23 @@ function updateProgress() {
 // ── SUBMIT ────────────────────────────────────────────────────
 async function submitSurvey() {
   const questions = eventConfig.questions || DEMO_CONFIG.questions;
+
+  // Build respondent from form fields
+  const name     = (document.getElementById('f-name')?.value     || '').trim();
+  const email    = (document.getElementById('f-email')?.value    || '').trim();
+  const company  = (document.getElementById('f-company')?.value  || '').trim();
+  const role     = (document.getElementById('f-role')?.value     || '').trim();
+  const industry = (document.getElementById('f-industry')?.value || '').trim();
+
+  if (!name || !email || !company) {
+    document.getElementById('questions-error').textContent = 'Por favor completa todos los campos de contacto.';
+    document.getElementById('questions-error').classList.add('show');
+    return;
+  }
+
+  respondent = { name, email, company, role, industry };
+
+  // Validate required questions
   const unanswered = questions.filter(q => {
     if (!q.required) return false;
     const ans = answers[q.id];
@@ -1063,23 +1080,21 @@ async function submitSurvey() {
     return false;
   });
   if (unanswered.length > 0) {
-    document.getElementById('questions-error').textContent = "Por favor responde todas las preguntas requeridas.";
+    document.getElementById('questions-error').textContent = 'Por favor responde todas las preguntas requeridas.';
     document.getElementById('questions-error').classList.add('show');
     return;
   }
   document.getElementById('questions-error').classList.remove('show');
-
-  // Show loading overlay
   showLoading();
 
   const configToSend = {
-    eventId: eventConfig.eventId || 'demo',
-    eventName: eventConfig.eventName,
-    questions: questions,
-    systemPrompt: eventConfig.systemPrompt || DEMO_CONFIG.systemPrompt,
+    eventId:        eventConfig.eventId || 'demo',
+    eventName:      eventConfig.eventName,
+    questions:      questions,
+    systemPrompt:   eventConfig.systemPrompt   || DEMO_CONFIG.systemPrompt,
     reportTemplate: eventConfig.reportTemplate || DEMO_CONFIG.reportTemplate,
-    ctaUrl: eventConfig.ctaUrl,
-    ctaText: eventConfig.ctaText,
+    ctaUrl:         eventConfig.ctaUrl,
+    ctaText:        eventConfig.ctaText,
   };
 
   try {
@@ -1098,29 +1113,12 @@ async function submitSurvey() {
       localStorage.setItem('report_eventName', eventConfig.eventName);
       window.location.href = '/report/';
     } else {
-      // Server responded but no report — show email confirmation
       showEmailConfirm(respondent.email);
     }
   } catch(err) {
-    // Timeout or network error — show email confirmation
     console.error('submitSurvey:', err.message);
     showEmailConfirm(respondent.email);
   }
-}
-
-function showEmailConfirm(email) {
-  hideLoading();
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:#050d1a;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:"Inter",sans-serif';
-  overlay.innerHTML = `
-    <div style="background:#0b1a30;border:1px solid #1e3a5f;border-radius:16px;max-width:480px;width:100%;padding:40px;text-align:center">
-      <div style="font-size:48px;margin-bottom:20px">✅</div>
-      <h2 style="color:#fff;font-size:20px;font-weight:800;margin-bottom:10px">¡Listo! Tu reporte está en camino</h2>
-      <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin-bottom:8px">Tu diagnóstico personalizado de madurez en IA está siendo generado.</p>
-      <p style="color:#0edda9;font-size:14px;font-weight:600;margin-bottom:24px">Lo recibirás en <strong style="color:#fff">${email}</strong> en los próximos minutos.</p>
-      <p style="color:#64748b;font-size:12px">Revisa también tu carpeta de spam.</p>
-    </div>`;
-  document.body.appendChild(overlay);
 }
 
 function showLoading() {
