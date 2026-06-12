@@ -65,8 +65,8 @@ exports.handler = async (event) => {
     const validScores = DIMS.map(d => scores[d.id]).filter(s => s > 0);
     const avg = validScores.length ? validScores.reduce((a,b)=>a+b,0)/validScores.length : 2;
     const scoreGlobal = Math.round(((avg - 1) / 4) * 100);
-    const nivelMadurez IA = avg < 2 ? NIVELES[1] : avg < 3 ? NIVELES[2] : avg < 4 ? NIVELES[3] : avg < 5 ? NIVELES[4] : NIVELES[5];
-    const scoreMadurez IAStr = avg.toFixed(1);
+    const nivelMadurez = avg < 2 ? NIVELES[1] : avg < 3 ? NIVELES[2] : avg < 4 ? NIVELES[3] : avg < 5 ? NIVELES[4] : NIVELES[5];
+    const scoreNivelStr = avg.toFixed(1);
 
     // Generate dimension bars HTML server-side
     const dimensionBars = DIMS.map(d => {
@@ -100,7 +100,7 @@ exports.handler = async (event) => {
       messages: [{
         role: 'user',
         content: `Respondente: ${respondent.name} | ${respondent.company} | ${respondent.role} | ${respondent.industry || '—'}
-Score de Madurez: ${scoreMadurez IAStr}/5 · ${nivelMadurez IA} · ${scoreGlobal}/100
+Score de Madurez: ${scoreNivelStr}/5 · ${nivelMadurez} · ${scoreGlobal}/100
 Dimensiones: ${dimsText}
 Brechas críticas (más bajas): ${brechas3.map(d=>`${d.label} ${d.score}/5`).join(', ')}
 Datos adicionales: ${answersText}
@@ -173,7 +173,7 @@ Genera texto para estas 5 secciones separadas por ===:
     // Fill template
     const vars = {
       NOMBRE: respondent.name, EMPRESA: respondent.company, CARGO: respondent.role,
-      SCORE: String(scoreGlobal), SCORE_MADUREZ: scoreMadurez IAStr, NIVEL_GARTNER: nivelMadurez IA,
+      SCORE: String(scoreGlobal), SCORE_MADUREZ: scoreNivelStr, NIVEL_GARTNER: nivelMadurez,
       DIMENSIONES_BARRAS: dimensionBars,
       ANALISIS_POSICION: analisis,
       BENCHMARK: benchmark,
