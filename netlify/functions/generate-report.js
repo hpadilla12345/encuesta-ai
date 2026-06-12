@@ -31,6 +31,9 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode:405, headers:cors, body:'Method not allowed' };
 
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return { statusCode:500, headers:cors, body: JSON.stringify({ success:false, error:'ANTHROPIC_API_KEY not set in environment' }) };
+    }
     const { answers, respondent, eventConfig } = JSON.parse(event.body);
     let { questions, eventName, eventId } = eventConfig;
 
@@ -94,7 +97,7 @@ exports.handler = async (event) => {
     // ── CLAUDE: only text analysis (~500 tokens output) ──────────────────────
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const msg = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 900,
       system: systemPrompt + '\n\nResponde SOLO con texto plano separado por marcadores. Sin HTML. Sin markdown.',
       messages: [{
