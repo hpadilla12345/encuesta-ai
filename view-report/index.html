@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tu Reporte de Madurez en IA</title>
+<style>
+body{margin:0;font-family:Inter,sans-serif;background:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.loading{text-align:center;color:#64748b;font-size:14px}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#0d9488;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="loading">
+  <div class="spinner"></div>
+  <p>Cargando tu reporte...</p>
+</div>
+<script>
+(async function() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  const eventId = params.get('event') || 'evt_1781153414991_7v7i4';
+  if (!id) { document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444">Reporte no encontrado. Verifica el enlace.</div>'; return; }
+  try {
+    const res = await fetch('/.netlify/functions/list-responses?eventId=' + eventId + '&email=' + encodeURIComponent(id));
+    const data = await res.json();
+    const report = (data.responses || []).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+    if (report && report.reportHtml) {
+      document.open(); document.write(report.reportHtml); document.close();
+    } else {
+      document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#64748b"><h2>Reporte no disponible</h2><p style="margin-top:8px">Si acabas de completar la encuesta, espera unos minutos e intenta de nuevo.</p></div>';
+    }
+  } catch(e) {
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444">Error cargando el reporte: ' + e.message + '</div>';
+  }
+})();
+</script>
+</body>
+</html>
