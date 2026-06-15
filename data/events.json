@@ -155,6 +155,27 @@
         ]
       },
       {
+        "id": "qA2",
+        "type": "single",
+        "label": "¿En qué nivel jerárquico está patrocinada la iniciativa de IA en tu empresa?",
+        "required": true,
+        "dimension": "G1",
+        "sponsorScore": {
+          "Accionistas / Consejo de Administración": 5,
+          "Dirección General / CEO": 4,
+          "Algunas Direcciones de Área": 3,
+          "Gerencia Media": 2,
+          "No tiene patrocinador definido / No está claro": 1
+        },
+        "options": [
+          "Accionistas / Consejo de Administración",
+          "Dirección General / CEO",
+          "Algunas Direcciones de Área",
+          "Gerencia Media",
+          "No tiene patrocinador definido / No está claro"
+        ]
+      },
+      {
         "id": "q1781153097887",
         "type": "scale",
         "label": "Estrategia de IA: ¿tienen una estrategia de IA documentada y alineada al negocio?",
