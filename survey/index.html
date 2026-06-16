@@ -1137,5 +1137,41 @@ function showEmailConfirm(email) {
   document.body.appendChild(overlay);
 }
 </script>
+
+<script>
+// Pre-fill fields from URL params
+(function() {
+  function tryPrefill() {
+    var p = new URLSearchParams(location.search);
+    var map = { empresa:'f-company', industria:'f-industry', nombre:'f-name', cargo:'f-role' };
+    var filled = false;
+    Object.entries(map).forEach(function(entry) {
+      var param = entry[0]; var fieldId = entry[1];
+      var val = p.get(param);
+      if (!val) return;
+      var el = document.getElementById(fieldId);
+      if (!el) return;
+      filled = true;
+      el.value = decodeURIComponent(val.replace(/\+/g,' '));
+      if (el.tagName === 'SELECT') {
+        var lower = val.toLowerCase();
+        Array.from(el.options).forEach(function(opt) {
+          if (opt.text.toLowerCase().indexOf(lower) > -1 || opt.value.toLowerCase().indexOf(lower) > -1)
+            opt.selected = true;
+        });
+        el.disabled = true;
+      } else {
+        el.readOnly = true;
+      }
+      el.style.background = 'rgba(13,148,136,.08)';
+      el.style.borderColor = '#0d9488';
+    });
+  }
+  // Try immediately and also after a short delay (in case fields render async)
+  tryPrefill();
+  setTimeout(tryPrefill, 800);
+  setTimeout(tryPrefill, 2000);
+})();
+</script>
 </body>
 </html>
