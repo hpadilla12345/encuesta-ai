@@ -87,7 +87,7 @@ async function generateMAIAReport(client, responses, eventConfig) {
   }).join('\n\n---\n\n');
 
   const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2500,
     system: `Eres consultor senior de Grupo Scanda. Analiza el grupo completo de respondentes y genera un reporte interno de oportunidades comerciales mapeadas al portafolio MAIA.
 
@@ -131,7 +131,7 @@ async function generateCompanyReport(client, leads, company, eventConfig) {
   }).join('\n\n---\n\n');
 
   const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2000,
     system: `Eres consultor senior de Scanda preparando el reporte por empresa para el Workshop de Discovery.
 
