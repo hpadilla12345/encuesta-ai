@@ -164,7 +164,7 @@ REGLAS: Tono ejecutivo y directo. Español formal. Sin lenguaje comercial. Sin m
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1500,
         system: systemPrompt,
         messages: [{ role: 'user', content: `Evento: ${ev.eventName}\nParticipantes: ${stats.total}\n\nRESULTADOS:\n${respSummary}` }],
