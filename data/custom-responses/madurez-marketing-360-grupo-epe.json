@@ -1,0 +1,215 @@
+[
+  {
+    "identificacion": {
+      "company": "EPE",
+      "name": "Alejandra Vital",
+      "role": "Marketing",
+      "email": "avital@tadah.com.mx",
+      "date": "2026-09-30",
+      "industry": "Tecnología"
+    },
+    "alcance": "portafolio completo",
+    "lineas": [
+      {
+        "id": 1,
+        "n": "Ciberseguridad",
+        "p": "",
+        "v": ""
+      },
+      {
+        "id": 2,
+        "n": "Centro de datos y Nube",
+        "p": "",
+        "v": ""
+      },
+      {
+        "id": 3,
+        "n": "Endpoint Management",
+        "p": "",
+        "v": ""
+      }
+    ],
+    "puntajes": {
+      "L1_p1": 0,
+      "L1_p2": 3,
+      "L1_p3": 3,
+      "L1_p4": 3,
+      "L1_p5": 2,
+      "L1_p6": 3,
+      "L1_p7": 1,
+      "L1_p8": 1,
+      "L1_p9": 1,
+      "L1_p10": 2,
+      "L1_e1": 1,
+      "L1_e2": 3,
+      "L1_e3": 3,
+      "L1_e4": 0,
+      "L1_e5": 0,
+      "L2_p1": 0,
+      "L2_p2": 3,
+      "L2_p3": 3,
+      "L2_p4": 3,
+      "L2_p5": 2,
+      "L2_p6": 3,
+      "L2_p7": 1,
+      "L2_p8": 1,
+      "L2_p9": 1,
+      "L2_p10": 3,
+      "L2_e1": 0,
+      "L2_e2": 3,
+      "L2_e3": 3,
+      "L2_e4": 0,
+      "L2_e5": 0,
+      "L3_p1": 1,
+      "L3_p2": 3,
+      "L3_p3": 3,
+      "L3_p4": 3,
+      "L3_p5": 2,
+      "L3_p6": 3,
+      "L3_p7": 1,
+      "L3_p8": 1,
+      "L3_p9": 1,
+      "L3_p10": 2,
+      "L3_e1": 0,
+      "L3_e2": 3,
+      "L3_e3": 3,
+      "L3_e4": 0,
+      "L3_e5": 0,
+      "a2_1": 1,
+      "a2_2": 0,
+      "a2_3": 0,
+      "a2_5": 3,
+      "a2_6": 3,
+      "a2_7": 0,
+      "a2_8": 0,
+      "a2_9": 0,
+      "a3_1": 3,
+      "a3_2": 1,
+      "a3_3": 1,
+      "a3_4": 2,
+      "a3_5": 0,
+      "a3_6": 1,
+      "a4_1": 0,
+      "a4_2": 0,
+      "a4_3": 0,
+      "a4_4": 0,
+      "a4_5": 0,
+      "a4_6": 0,
+      "a4_7": 0,
+      "a4_8": 0,
+      "a4_9": 0,
+      "a5_1": 2,
+      "a5_2": 0,
+      "a5_3": 3,
+      "a5_4": 1,
+      "a5_5": 0,
+      "a5_6": 1,
+      "a6_1": 0,
+      "a6_2": 0,
+      "a6_3": 3,
+      "a6_4": 1,
+      "a6_5": 2,
+      "a6_6": 0,
+      "a6_7": 0,
+      "a7_1": 3,
+      "a7_2": 3,
+      "a7_3": 2,
+      "a7_4": 0,
+      "a7_5": 0,
+      "a7_6": 3,
+      "a8_1": 0,
+      "a8_2": 0,
+      "a8_3": 0,
+      "a8_4": 2,
+      "a8_5": 2
+    },
+    "sustento": {},
+    "verificaciones": [
+      "Para listar nuestras líneas de negocio tuvimos que ponernos de acuerdo entre varias personas",
+      "Hay ofertas en nuestro material comercial que no aparecen en la lista anterior, o al revés",
+      "Conocemos algunos porcentajes pero no el número absoluto del que provienen",
+      "Nadie en el equipo ha administrado antes un presupuesto de medios digitales"
+    ],
+    "resultado": {
+      "global": 1.12,
+      "score": 37,
+      "nivel": "Inicial",
+      "veto": true,
+      "dimensiones": {
+        "a1": {
+          "label": "Oferta y product-market fit",
+          "peso": 20,
+          "valor": 1.97
+        },
+        "a2": {
+          "label": "Datos y atribución",
+          "peso": 20,
+          "valor": 0.88
+        },
+        "a3": {
+          "label": "KPIs y medición",
+          "peso": 15,
+          "valor": 1.33
+        },
+        "a4": {
+          "label": "Canales digitales",
+          "peso": 15,
+          "valor": 0
+        },
+        "a5": {
+          "label": "Objetivos",
+          "peso": 10,
+          "valor": 1.17
+        },
+        "a6": {
+          "label": "Activos digitales",
+          "peso": 8,
+          "valor": 0.86
+        },
+        "a7": {
+          "label": "Procesos y gobierno",
+          "peso": 7,
+          "valor": 1.83
+        },
+        "a8": {
+          "label": "Gente y capacidades",
+          "peso": 5,
+          "valor": 0.8
+        }
+      },
+      "lineas": [
+        {
+          "nombre": "Ciberseguridad",
+          "ingreso": "",
+          "vende": "",
+          "pmf": 1.9,
+          "escalabilidad": 1.4,
+          "etapa": "PMF validado"
+        },
+        {
+          "nombre": "Centro de datos y Nube",
+          "ingreso": "",
+          "vende": "",
+          "pmf": 2,
+          "escalabilidad": 1.2,
+          "etapa": "PMF validado"
+        },
+        {
+          "nombre": "Endpoint Management",
+          "ingreso": "",
+          "vende": "",
+          "pmf": 2,
+          "escalabilidad": 1.2,
+          "etapa": "PMF validado"
+        }
+      ]
+    },
+    "avance": {
+      "respondidos": 92,
+      "total": 93,
+      "porcentaje": 99
+    },
+    "instrumento": "madurez-marketing-digital-v1",
+    "ts": "2026-09-30T22:48:45.795Z"
+  }
+]
