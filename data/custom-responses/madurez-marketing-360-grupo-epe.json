@@ -211,5 +211,250 @@
     },
     "instrumento": "madurez-marketing-digital-v1",
     "ts": "2026-09-30T22:48:45.795Z"
+  },
+  {
+    "identificacion": {
+      "company": "Equipos y Productos Especializados, S.A. de C.V.",
+      "name": "Yael Dorantes Labra",
+      "role": "Key Account Manager Farmer IP",
+      "email": "ydorantes@epe.com.mx",
+      "date": "2026-10-02",
+      "industry": "Comercial"
+    },
+    "alcance": "portafolio completo",
+    "lineas": [
+      {
+        "id": 1,
+        "n": "Nubes Hibridas",
+        "p": "",
+        "v": "Todos"
+      },
+      {
+        "id": 2,
+        "n": "Ciberseguridad",
+        "p": "",
+        "v": "Todos"
+      },
+      {
+        "id": 3,
+        "n": "TI - Client Solutions",
+        "p": "",
+        "v": "Todos"
+      },
+      {
+        "id": 4,
+        "n": "Ecosistemas de seguridad física inteligente",
+        "p": "",
+        "v": "Todos"
+      }
+    ],
+    "puntajes": {
+      "L1_p1": 0,
+      "L1_p2": 1,
+      "L1_p3": 3,
+      "L1_p4": 2,
+      "L1_p5": 0,
+      "L1_p6": 0,
+      "L1_p8": 0,
+      "L1_e5": 0,
+      "L1_e4": 0,
+      "L1_e3": 0,
+      "a2_1": 0,
+      "a2_9": 0,
+      "a2_8": 0,
+      "a2_7": 0,
+      "a2_6": 0,
+      "a2_5": 0,
+      "a2_4": 0,
+      "a2_3": 0,
+      "a2_2": 0,
+      "a3_1": 0,
+      "a3_2": 0,
+      "a3_3": 0,
+      "a3_4": 0,
+      "a3_5": 0,
+      "a3_6": 0,
+      "a4_1": 0,
+      "a4_2": 0,
+      "a4_3": 0,
+      "a4_4": 0,
+      "a4_5": 0,
+      "a4_6": 0,
+      "a4_7": 0,
+      "a4_8": 0,
+      "a4_9": 0,
+      "a5_1": 0,
+      "a5_2": 0,
+      "a5_3": 0,
+      "a5_4": 0,
+      "a5_5": 0,
+      "a5_6": 0,
+      "a6_1": 0,
+      "a6_2": 0,
+      "a6_3": 0,
+      "a6_4": 0,
+      "a6_5": 0,
+      "a6_6": 0,
+      "a6_7": 0,
+      "a7_1": 0,
+      "a7_2": 0,
+      "a7_3": 0,
+      "a7_4": 0,
+      "a7_5": 0,
+      "a7_6": 0,
+      "a8_1": 0,
+      "a8_2": 0,
+      "a8_5": 2,
+      "L1_p7": 1,
+      "L1_p9": 0,
+      "L1_p10": 0,
+      "L1_e2": 0,
+      "L1_e1": 0,
+      "a8_3": 1,
+      "a8_4": 1,
+      "L2_p1": 0,
+      "L2_p2": 1,
+      "L2_p3": 3,
+      "L2_p4": 2,
+      "L2_p5": 0,
+      "L2_p6": 0,
+      "L2_p7": 1,
+      "L2_p8": 0,
+      "L2_p9": 0,
+      "L2_p10": 0,
+      "L2_e1": 0,
+      "L2_e2": 0,
+      "L2_e3": 0,
+      "L2_e4": 0,
+      "L2_e5": 0,
+      "L3_p1": 0,
+      "L3_p2": 1,
+      "L3_p3": 3,
+      "L3_p4": 2,
+      "L3_p5": 0,
+      "L3_p6": 0,
+      "L3_p7": 1,
+      "L3_p8": 0,
+      "L3_p9": 0,
+      "L3_p10": 0,
+      "L3_e1": 0,
+      "L3_e2": 0,
+      "L3_e3": 0,
+      "L3_e4": 0,
+      "L3_e5": 0,
+      "L4_e5": 0,
+      "L4_e4": 0,
+      "L4_e3": 0,
+      "L4_e2": 0,
+      "L4_e1": 0,
+      "L4_p10": 0,
+      "L4_p9": 0,
+      "L4_p8": 0,
+      "L4_p7": 1,
+      "L4_p6": 0,
+      "L4_p5": 0,
+      "L4_p4": 2,
+      "L4_p3": 3,
+      "L4_p2": 1,
+      "L4_p1": 0
+    },
+    "sustento": {},
+    "verificaciones": [
+      "Para listar nuestras líneas de negocio tuvimos que ponernos de acuerdo entre varias personas",
+      "No conocemos con precisión qué porcentaje del ingreso aporta cada línea",
+      "Hay ofertas en nuestro material comercial que no aparecen en la lista anterior, o al revés",
+      "No hay una persona claramente responsable de los datos de marketing",
+      "Descontar de forma significativa es una condición habitual para cerrar",
+      "Nadie en el equipo ha administrado antes un presupuesto de medios digitales"
+    ],
+    "resultado": {
+      "global": 0.18,
+      "score": 6,
+      "nivel": "Inicial",
+      "veto": true,
+      "dimensiones": {
+        "a1": {
+          "label": "Oferta y product-market fit",
+          "peso": 20,
+          "valor": 0.7
+        },
+        "a2": {
+          "label": "Datos y atribución",
+          "peso": 20,
+          "valor": 0
+        },
+        "a3": {
+          "label": "KPIs y medición",
+          "peso": 15,
+          "valor": 0
+        },
+        "a4": {
+          "label": "Canales digitales",
+          "peso": 15,
+          "valor": 0
+        },
+        "a5": {
+          "label": "Objetivos",
+          "peso": 10,
+          "valor": 0
+        },
+        "a6": {
+          "label": "Activos digitales",
+          "peso": 8,
+          "valor": 0
+        },
+        "a7": {
+          "label": "Procesos y gobierno",
+          "peso": 7,
+          "valor": 0
+        },
+        "a8": {
+          "label": "Gente y capacidades",
+          "peso": 5,
+          "valor": 0.8
+        }
+      },
+      "lineas": [
+        {
+          "nombre": "Nubes Hibridas",
+          "ingreso": "",
+          "vende": "Todos",
+          "pmf": 0.7,
+          "escalabilidad": 0,
+          "etapa": "Sin PMF"
+        },
+        {
+          "nombre": "Ciberseguridad",
+          "ingreso": "",
+          "vende": "Todos",
+          "pmf": 0.7,
+          "escalabilidad": 0,
+          "etapa": "Sin PMF"
+        },
+        {
+          "nombre": "TI - Client Solutions",
+          "ingreso": "",
+          "vende": "Todos",
+          "pmf": 0.7,
+          "escalabilidad": 0,
+          "etapa": "Sin PMF"
+        },
+        {
+          "nombre": "Ecosistemas de seguridad física inteligente",
+          "ingreso": "",
+          "vende": "Todos",
+          "pmf": 0.7,
+          "escalabilidad": 0,
+          "etapa": "Sin PMF"
+        }
+      ]
+    },
+    "avance": {
+      "respondidos": 108,
+      "total": 108,
+      "porcentaje": 100
+    },
+    "instrumento": "madurez-marketing-digital-v1",
+    "ts": "2026-10-02T23:24:39.158Z"
   }
 ]
